@@ -1,0 +1,52 @@
+ACADEMIC ADVISING SHEET
+========================
+
+Student Information:
+-------------------
+Name: Jane Smith
+Student ID: 12345678
+Program: Master of Science in Information Systems (MSIS)
+Advisor: Dr. Johnson
+
+Completed Courses:
+-----------------
+
+Fall 2023:
+- CS501: Advanced Database Systems, 3 Credits, Grade: A, Professor: Dr. Anderson
+- IT502: Systems Analysis and Design, 3 Credits, Grade: A-, Professor: Dr. Williams
+- MGMT503: Project Management, 3 Credits, Grade: B+, Professor: Dr. Brown
+
+Spring 2024:
+- CS504: Machine Learning Fundamentals, 3 Credits, Grade: A, Professor: Dr. Chen
+- IT505: Cloud Computing Architecture, 3 Credits, Grade: A-, Professor: Dr. Martinez
+- MGMT506: Strategic Information Systems, 3 Credits, Grade: B, Professor: Dr. Taylor
+
+Summer 2024:
+- CS507: Big Data Analytics, 4 Credits, Grade: A-, Professor: Dr. Kumar
+- IT508: Cybersecurity Principles, 3 Credits, Grade: A, Professor: Dr. Park
+
+Fall 2024:
+- CS509: Advanced Software Engineering, 3 Credits, Grade: A, Professor: Dr. Robinson
+- IT510: Enterprise Architecture, 3 Credits, Grade: B+, Professor: Dr. Lee
+
+Courses In Progress (Spring 2025):
+---------------------------------
+- CS511: Artificial Intelligence, 3 Credits, Professor: Dr. White
+- IT512: Data Visualization, 3 Credits, Professor: Dr. Garcia
+- MGMT513: IT Leadership, 3 Credits, Professor: Dr. Jackson
+
+Remaining Required Courses:
+--------------------------
+- CS515: Capstone Project (4 Credits)
+- IT516: Information Ethics (3 Credits)
+
+Total Credits Completed: 31
+Total Credits In Progress: 9
+Total Credits Required: 48
+Expected Graduation: Fall 2025
+
+Notes:
+------
+- GPA: 3.75
+- All prerequisite requirements have been met
+- Capstone project advisor: Dr. Anderson

@@ -2,6 +2,7 @@ import os
 import json
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
@@ -11,6 +12,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
+# Import LandingAI service
+from landingai_service import LandingAIService
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -19,10 +23,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOADED_DOCS_DEST'] = 'uploads/'
 
-CORS(app)  # Allow CORS for React frontend
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])  # Allow CORS for React frontend
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# Initialize LandingAI service
+landingai_service = LandingAIService()
 
 # Models
 class User(UserMixin, db.Model):
@@ -62,7 +69,7 @@ class AdvisingSheet(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Helper function for request validation
 def validate_json_request(required_fields):
@@ -233,25 +240,140 @@ def user_courses():
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload():
+    """Upload advising sheet and extract course data using LandingAI"""
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
+    
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-    if file:
+    
+    # Save file
+    filename = secure_filename(file.filename)
+    upload_dir = os.path.join(app.root_path, 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+    
+    # Extract courses using LandingAI
+    extracted_data = landingai_service.extract_courses(Path(filepath))
+    
+    # Save to database
+    advising_sheet = AdvisingSheet(
+        user_id=current_user.id,
+        filename=filename,
+        filepath=filepath,
+        parsed_data=json.dumps(extracted_data)
+    )
+    db.session.add(advising_sheet)
+    
+    # Create courses and mark user courses
+    courses_created = 0
+    courses_updated = 0
+    
+    for course_data in extracted_data.get('courses', []):
+        # Get or create course
+        course = Course.query.filter_by(code=course_data['course_code']).first()
+        if not course:
+            course = Course(
+                code=course_data['course_code'],
+                name=course_data['course_name'],
+                credits=course_data['credits'],
+                required=True,
+                prerequisites='[]'
+            )
+            db.session.add(course)
+            db.session.flush()
+            courses_created += 1
+        
+        # Get or create user course
+        user_course = UserCourse.query.filter_by(
+            user_id=current_user.id,
+            course_id=course.id
+        ).first()
+        
+        if not user_course:
+            user_course = UserCourse(
+                user_id=current_user.id,
+                course_id=course.id,
+                completed=course_data.get('completed', False),
+                grade=course_data.get('grade', '')
+            )
+            db.session.add(user_course)
+            courses_updated += 1
+        else:
+            user_course.completed = course_data.get('completed', False)
+            user_course.grade = course_data.get('grade', '')
+            courses_updated += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'File uploaded and courses extracted successfully',
+        'id': advising_sheet.id,
+        'extracted_data': extracted_data,
+        'courses_created': courses_created,
+        'courses_updated': courses_updated
+    }), 200
+
+@app.route('/api/upload/async', methods=['POST'])
+@login_required
+def upload_async():
+    """
+    Upload large file and create async extraction job
+    For files > 50 pages, use this instead of regular upload
+    """
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    try:
+        # Save file
         filename = secure_filename(file.filename)
         upload_dir = os.path.join(app.root_path, 'uploads')
         os.makedirs(upload_dir, exist_ok=True)
         filepath = os.path.join(upload_dir, filename)
         file.save(filepath)
-        advising_sheet = AdvisingSheet(user_id=current_user.id, filename=filename, filepath=filepath)
-        # Parse the file here if possible, for now just store
-        # Assuming it's a text file or CSV, parse courses
-        # For simplicity, assume parsed_data is empty
+        
+        # Create async job
+        job_id = landingai_service.extract_courses_async(Path(filepath))
+        
+        # Save advising sheet with job_id in parsed_data
+        advising_sheet = AdvisingSheet(
+            user_id=current_user.id,
+            filename=filename,
+            filepath=filepath,
+            parsed_data=json.dumps({'job_id': job_id, 'status': 'processing'})
+        )
         db.session.add(advising_sheet)
         db.session.commit()
-        return jsonify({'message': 'File uploaded', 'id': advising_sheet.id})
-    return jsonify({'error': 'File not allowed'}), 400
+        
+        return jsonify({
+            'message': 'File uploaded, extraction in progress',
+            'job_id': job_id,
+            'advising_sheet_id': advising_sheet.id
+        }), 202
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/upload/status/<job_id>', methods=['GET'])
+@login_required
+def upload_status(job_id: str):
+    """
+    Check status of async extraction job
+    Returns: {status: 'processing'|'completed'|'failed', result: {...}}
+    """
+    try:
+        status = landingai_service.get_job_status(job_id)
+        return jsonify(status), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/progress')
 @login_required
