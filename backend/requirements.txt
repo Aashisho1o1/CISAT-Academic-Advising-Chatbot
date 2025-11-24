@@ -1,9 +1,9 @@
 # Flask Core
 Flask==2.3.3
-Flask-Cors==4.0.0
+Flask-Cors==6.0.0
 Flask-Login==0.6.3
 Flask-SQLAlchemy==3.0.5
-Werkzeug==2.3.7
+Werkzeug==3.0.6
 
 # Database
 SQLAlchemy==2.0.44
