@@ -3,8 +3,9 @@
 LandingAI Service - Handles document parsing and data extraction
 Smart extraction for academic planning sheets with table structure
 """
-import os
 import json
+import logging
+import os
 import re
 from html import unescape
 from pathlib import Path
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 
 # Load environment variables from .env file
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 # Enhanced schema that understands table structure
@@ -113,7 +115,7 @@ class LandingAIService:
         """
         try:
             # Try PyPDF2 first (free, offline)
-            print(f"[PDF Parser] Parsing document with PyPDF2: {file_path}")
+            logger.info("[PDF Parser] Parsing document with PyPDF2: %s", file_path)
             import PyPDF2
             
             with open(file_path, 'rb') as f:
@@ -126,16 +128,20 @@ class LandingAIService:
                         text_chunks.append(page_text)
                 
                 text = "\n\n".join(text_chunks)
-                print(f"[PDF Parser] Extracted {len(text_chunks)} pages, {len(text)} characters")
+                logger.info(
+                    "[PDF Parser] Extracted %s pages, %s characters",
+                    len(text_chunks),
+                    len(text),
+                )
                 return text
         
         except ImportError:
-            print("[PDF Parser] PyPDF2 not installed, falling back to LandingAI...")
+            logger.warning("[PDF Parser] PyPDF2 not installed, falling back to LandingAI...")
             # Fallback to LandingAI if PyPDF2 not available
             return self._parse_with_landingai(file_path, model)
         
         except Exception as e:
-            print(f"[PDF Parser] PyPDF2 failed: {e}, trying LandingAI...")
+            logger.warning("[PDF Parser] PyPDF2 failed: %s, trying LandingAI...", e)
             # Fallback to LandingAI if PyPDF2 fails
             return self._parse_with_landingai(file_path, model)
     
@@ -145,7 +151,7 @@ class LandingAIService:
         This is a fallback when PyPDF2 fails
         """
         try:
-            print(f"[LandingAI] Parsing document: {file_path}")
+            logger.info("[LandingAI] Parsing document: %s", file_path)
             response = self.client.parse(
                 document=file_path,
                 model=model
@@ -160,7 +166,11 @@ class LandingAIService:
                     chunks_text.append(text)
             
             markdown_text = "\n\n".join(chunks_text)
-            print(f"[LandingAI] Parsed {len(chunks_text)} chunks, {len(markdown_text)} characters")
+            logger.info(
+                "[LandingAI] Parsed %s chunks, %s characters",
+                len(chunks_text),
+                len(markdown_text),
+            )
             return markdown_text
         
         except Exception as e:
@@ -181,13 +191,12 @@ class LandingAIService:
         """
         try:
             # Step 1: Parse document to text using PyPDF2
-            print(f"[Extractor] Parsing document: {file_path.name}")
+            logger.info("[Extractor] Parsing document: %s", file_path.name)
             text_content = self.parse_document_to_markdown(file_path)
-            
-            print(f"[Extractor] Text preview (first 500 chars):\n{text_content[:500]}...")
+            logger.debug("[Extractor] Text preview (first 500 chars):\n%s...", text_content[:500])
             
             # Step 2: Use regex extraction (no API call)
-            print(f"[Extractor] Extracting courses using regex pattern matching...")
+            logger.info("[Extractor] Extracting courses using regex pattern matching...")
             courses = self._regex_extract_courses(text_content)
             
             # Step 3: Organize by section
@@ -198,22 +207,22 @@ class LandingAIService:
                 'courses': courses
             }
             
-            print(f"[Extractor] ✅ Extracted {len(courses)} total courses")
-            print(f"  - Core: {len(result['core_courses'])}")
-            print(f"  - Concentration: {len(result['concentration_courses'])}")
-            print(f"  - Elective: {len(result['elective_courses'])}")
+            logger.info("[Extractor] Extracted %s total courses", len(courses))
+            logger.info("  - Core: %s", len(result["core_courses"]))
+            logger.info("  - Concentration: %s", len(result["concentration_courses"]))
+            logger.info("  - Elective: %s", len(result["elective_courses"]))
             
             return result
         
         except Exception as e:
-            print(f"[Extractor] ❌ Extraction failed: {str(e)}")
+            logger.exception("[Extractor] Extraction failed: %s", str(e))
             raise Exception(f"Failed to extract courses: {str(e)}")
     
     def _post_process_courses(self, result: Dict, markdown: str) -> Dict:
         """
         Post-process extracted data with regex fallback for missed courses
         """
-        print("[LandingAI] Post-processing and validating courses...")
+        logger.info("[LandingAI] Post-processing and validating courses...")
         
         # Count extracted courses
         all_extracted = sum([
@@ -224,7 +233,10 @@ class LandingAIService:
         
         # If AI missed courses (expected at least 3 core courses), use regex fallback
         if all_extracted < 3:
-            print(f"[LandingAI] ⚠️ Low extraction count ({all_extracted}), using regex fallback...")
+            logger.warning(
+                "[LandingAI] Low extraction count (%s), using regex fallback...",
+                all_extracted,
+            )
             fallback_courses = self._regex_extract_courses(markdown)
             
             # Merge with AI results (AI takes priority if exists)
@@ -276,7 +288,11 @@ class LandingAIService:
             match = re.search(pattern, clean_text, re.IGNORECASE)
             if match:
                 section_positions.append((match.start(), section_type))
-                print(f"  Found section: {section_type} at position {match.start()}")
+                logger.debug(
+                    "  Found section: %s at position %s",
+                    section_type,
+                    match.start(),
+                )
         
         section_positions.sort()  # Sort by position in text
         
@@ -335,7 +351,7 @@ class LandingAIService:
             }
             
             courses.append(course)
-            print(f"  Extracted: {course_code} - {title} ({semester})")
+            logger.debug("  Extracted: %s - %s (%s)", course_code, title, semester)
         
         # Extract courses with partial codes (IST without number)
         # Only add if not already in the list (avoid duplicates)
@@ -381,7 +397,12 @@ class LandingAIService:
             }
             
             courses.append(course)
-            print(f"  Extracted: {course_code} - {title} ({semester}) [partial code]")
+            logger.debug(
+                "  Extracted: %s - %s (%s) [partial code]",
+                course_code,
+                title,
+                semester,
+            )
         
         return courses
     

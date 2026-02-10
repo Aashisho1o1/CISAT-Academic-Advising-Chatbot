@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 *.env
+backend/.env
 
 # Python
 __pycache__/
@@ -36,6 +37,8 @@ env/
 # Flask
 instance/
 .webassets-cache
+backend/instance/
+backend/__pycache__/
 
 # Database
 *.db
@@ -67,6 +70,7 @@ backend/uploads/*.pdf
 backend/uploads/*.docx
 backend/uploads/*.xlsx
 backend/uploads/*.csv
+backend/uploads/*.txt
 # Keep sample files
 !backend/uploads/sample_advising_sheet.txt
 !backend/uploads/.gitkeep
