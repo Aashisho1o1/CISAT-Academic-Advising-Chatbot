@@ -6,6 +6,7 @@ Smart extraction for academic planning sheets with table structure
 import os
 import json
 import re
+from html import unescape
 from pathlib import Path
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
@@ -100,14 +101,48 @@ class LandingAIService:
     
     def parse_document_to_markdown(self, file_path: Path, model: str = "dpt-2-latest") -> str:
         """
-        Parse document to markdown, preserving table structure
+        Parse document to text using PyPDF2 (free, no API required)
+        Falls back to LandingAI if PyPDF2 fails
         
         Args:
             file_path: Path to the document file
-            model: LandingAI model to use
+            model: Not used in PyPDF2 mode (kept for backward compatibility)
         
         Returns:
-            Parsed markdown content
+            Parsed text content
+        """
+        try:
+            # Try PyPDF2 first (free, offline)
+            print(f"[PDF Parser] Parsing document with PyPDF2: {file_path}")
+            import PyPDF2
+            
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                text_chunks = []
+                
+                for page_num, page in enumerate(reader.pages):
+                    page_text = page.extract_text()
+                    if page_text.strip():
+                        text_chunks.append(page_text)
+                
+                text = "\n\n".join(text_chunks)
+                print(f"[PDF Parser] Extracted {len(text_chunks)} pages, {len(text)} characters")
+                return text
+        
+        except ImportError:
+            print("[PDF Parser] PyPDF2 not installed, falling back to LandingAI...")
+            # Fallback to LandingAI if PyPDF2 not available
+            return self._parse_with_landingai(file_path, model)
+        
+        except Exception as e:
+            print(f"[PDF Parser] PyPDF2 failed: {e}, trying LandingAI...")
+            # Fallback to LandingAI if PyPDF2 fails
+            return self._parse_with_landingai(file_path, model)
+    
+    def _parse_with_landingai(self, file_path: Path, model: str = "dpt-2-latest") -> str:
+        """
+        Parse document using LandingAI API (requires API key and credits)
+        This is a fallback when PyPDF2 fails
         """
         try:
             print(f"[LandingAI] Parsing document: {file_path}")
@@ -116,13 +151,12 @@ class LandingAIService:
                 model=model
             )
             
-            # Extract text chunks and combine - use model_dump() for Pydantic v2
+            # Extract markdown chunks and combine - use model_dump() for Pydantic v2
             chunks_text = []
             for chunk in response.chunks:
-                # Pydantic v2 objects - use model_dump() to access fields
                 chunk_dict = chunk.model_dump() if hasattr(chunk, 'model_dump') else chunk.dict()
-                text = chunk_dict.get('text', '')
-                if text.strip():  # Only add non-empty chunks
+                text = chunk_dict.get('markdown', '')
+                if text.strip():
                     chunks_text.append(text)
             
             markdown_text = "\n\n".join(chunks_text)
@@ -137,7 +171,7 @@ class LandingAIService:
         Smart extraction that understands academic planning sheet table structure
         
         This is the MAIN function called from Flask routes.
-        Uses enhanced prompting and regex fallback to extract course data.
+        Uses PyPDF2 + regex extraction (NO API calls needed)
         
         Args:
             file_path: Path to uploaded file (PDF/Excel/CSV)
@@ -146,61 +180,33 @@ class LandingAIService:
             Dictionary with extracted course data
         """
         try:
-            # Step 1: Parse document to markdown
-            print(f"[LandingAI] Smart parsing document: {file_path.name}")
-            markdown_content = self.parse_document_to_markdown(file_path)
+            # Step 1: Parse document to text using PyPDF2
+            print(f"[Extractor] Parsing document: {file_path.name}")
+            text_content = self.parse_document_to_markdown(file_path)
             
-            # Step 2: Save markdown for extraction
-            temp_md_path = file_path.with_suffix('.md')
-            temp_md_path.write_text(markdown_content)
-            print(f"[LandingAI] Markdown preview (first 500 chars):\n{markdown_content[:500]}...")
+            print(f"[Extractor] Text preview (first 500 chars):\n{text_content[:500]}...")
             
-            # Step 3: Extract with enhanced schema
-            schema = pydantic_to_json_schema(AcademicPlanningSheet)
+            # Step 2: Use regex extraction (no API call)
+            print(f"[Extractor] Extracting courses using regex pattern matching...")
+            courses = self._regex_extract_courses(text_content)
             
-            print(f"[LandingAI] Extracting structured data with enhanced schema...")
-            print(f"[LandingAI] Schema type: {type(schema)}")
+            # Step 3: Organize by section
+            result = {
+                'core_courses': [c for c in courses if c.get('section') == 'CORE'],
+                'concentration_courses': [c for c in courses if c.get('section') == 'CONCENTRATION'],
+                'elective_courses': [c for c in courses if c.get('section') == 'ELECTIVE'],
+                'courses': courses
+            }
             
-            # LandingAI extract method accepts the schema directly
-            response = self.client.extract(
-                schema=schema,
-                markdown=temp_md_path
-            )
-            
-            # Step 4: Convert response to dict
-            if hasattr(response, 'data'):
-                result = response.data if isinstance(response.data, dict) else response.data.model_dump()
-            elif hasattr(response, 'model_dump'):
-                result = response.model_dump()
-            elif isinstance(response, dict):
-                result = response
-            else:
-                result = json.loads(json.dumps(response, default=str))
-            
-            # Step 5: Post-process and validate with regex fallback
-            result = self._post_process_courses(result, markdown_content)
-            
-            # Step 6: Clean up temp file
-            temp_md_path.unlink()
-            
-            # Step 7: Combine all courses into single list for backward compatibility with app.py
-            all_courses = []
-            for section_key in ['core_courses', 'concentration_courses', 'elective_courses']:
-                section_courses = result.get(section_key, [])
-                if isinstance(section_courses, list):
-                    all_courses.extend(section_courses)
-            
-            result['courses'] = all_courses
-            
-            print(f"[LandingAI] ✅ Extracted {len(all_courses)} total courses")
-            print(f"  - Core: {len(result.get('core_courses', []))}")
-            print(f"  - Concentration: {len(result.get('concentration_courses', []))}")
-            print(f"  - Elective: {len(result.get('elective_courses', []))}")
+            print(f"[Extractor] ✅ Extracted {len(courses)} total courses")
+            print(f"  - Core: {len(result['core_courses'])}")
+            print(f"  - Concentration: {len(result['concentration_courses'])}")
+            print(f"  - Elective: {len(result['elective_courses'])}")
             
             return result
         
         except Exception as e:
-            print(f"[LandingAI] ❌ Extraction failed: {str(e)}")
+            print(f"[Extractor] ❌ Extraction failed: {str(e)}")
             raise Exception(f"Failed to extract courses: {str(e)}")
     
     def _post_process_courses(self, result: Dict, markdown: str) -> Dict:
@@ -246,73 +252,136 @@ class LandingAIService:
     def _regex_extract_courses(self, markdown: str) -> List[Dict]:
         """
         Fallback regex-based extraction for table-structured documents
-        Looks for patterns like: IST 302 | Databases | 4 | | Fall 2025 |
+        IMPROVED: Strips HTML tags first, then finds ALL courses with semester info
+        Only extracts courses that have a semester (Fall/Spring YYYY) in SEMESTER TAKEN column
         """
+        # Step 1: Strip HTML tags from markdown
+        clean_text = re.sub(r'<[^>]+>', ' ', markdown)  # Remove all HTML tags
+        clean_text = unescape(clean_text)  # Decode HTML entities like &nbsp;
+        clean_text = re.sub(r'\s+', ' ', clean_text)  # Normalize whitespace
+        
         courses = []
         current_section = None
         
-        # Detect section headers
+        # Step 2: Find section boundaries in the text
         section_patterns = {
-            'CORE': r'CISAT CORE COURSES|CORE COURSES',
+            'CORE': r'CISAT CORE COURSES',
             'CONCENTRATION': r'CONCENTRATION COURSE',
-            'ELECTIVE': r'ELECTIVE|SECOND CONCENTRATION'
+            'ELECTIVE': r'ELECTIVE or SECOND CONCENTRATION'
         }
         
-        lines = markdown.split('\n')
+        # Find section positions
+        section_positions = []
+        for section_type, pattern in section_patterns.items():
+            match = re.search(pattern, clean_text, re.IGNORECASE)
+            if match:
+                section_positions.append((match.start(), section_type))
+                print(f"  Found section: {section_type} at position {match.start()}")
         
-        for i, line in enumerate(lines):
-            # Check for section headers
-            for section_type, pattern in section_patterns.items():
-                if re.search(pattern, line, re.IGNORECASE):
+        section_positions.sort()  # Sort by position in text
+        
+        # Step 3: Find ALL course patterns with semester in the text
+        # Pattern 1: Full code - "IST 302 Databases 4 Fall 2025"
+        # Pattern 2: Partial code - "IST Deep Learning 4 Spring 2026" (missing number)
+        pattern_full = r'\b([A-Z]{2,4})\s+(\d{3})\s+([A-Za-z\s]+?)\s+(\d)\s+(Fall|Spring)\s+(\d{4})'
+        pattern_partial = r'\b([A-Z]{2,4})\s+([A-Z][A-Za-z\s]+?)\s+(\d)\s+(Fall|Spring)\s+(\d{4})'
+        
+        # Extract courses with full codes first
+        for match in re.finditer(pattern_full, clean_text, re.IGNORECASE):
+            dept = match.group(1)
+            number = match.group(2)
+            title = match.group(3).strip()
+            units = int(match.group(4))
+            season = match.group(5)
+            year = match.group(6)
+            
+            course_code = f"{dept} {number}"
+            semester = f"{season} {year}"
+            
+            # Determine which section this course belongs to based on position
+            course_pos = match.start()
+            current_section = None
+            for i, (pos, section_type) in enumerate(section_positions):
+                if course_pos > pos:
                     current_section = section_type
-                    print(f"  Found section: {section_type}")
+                    # Check if there's a next section that would exclude this
+                    if i + 1 < len(section_positions) and course_pos > section_positions[i+1][0]:
+                        continue
                     break
             
-            # Look for course code patterns: IST 302, IST302, CS101, etc.
-            course_match = re.search(r'\b([A-Z]{2,4}\s*\d{3})\b', line, re.IGNORECASE)
-            if course_match and current_section:
-                course_code = re.sub(r'\s+', ' ', course_match.group(1)).strip()  # Normalize spacing
-                
-                # Try to extract other fields from the same line (table row)
-                # Table format: COURSE | TITLE | UNITS | WAIVED | SEMESTER | NOTES
-                parts = [p.strip() for p in line.split('|')]
-                
-                title = ''
-                units = 4
-                semester = None
-                notes = None
-                
-                if len(parts) >= 2:
-                    title = parts[1]
-                if len(parts) >= 3:
-                    units_match = re.search(r'\d+', parts[2])
-                    if units_match:
-                        units = int(units_match.group())
-                if len(parts) >= 5:
-                    semester = parts[4] if parts[4] else None
-                if len(parts) >= 6:
-                    notes = parts[5] if parts[5] else None
-                
-                # If title not found in same line, try next line
-                if not title and i + 1 < len(lines):
-                    next_line = lines[i + 1].strip()
-                    if next_line and not re.search(r'\b[A-Z]{2,4}\s*\d{3}\b', next_line):
-                        title = next_line
-                
-                course = {
-                    'course_code': course_code,
-                    'course_title': title or f"Course {course_code}",
-                    'course_name': title or f"Course {course_code}",  # Compatibility
-                    'units': units,
-                    'credits': units,  # Compatibility
-                    'semester_taken': semester,
-                    'notes': notes,
-                    'section': current_section,
-                    'completed': bool(semester)
-                }
-                
-                courses.append(course)
-                print(f"  Extracted: {course_code} - {title[:30]}... ({semester or 'not scheduled'})")
+            if not current_section:
+                continue  # Skip courses not in any section
+            
+            # Extract notes if present (after semester)
+            notes_match = re.search(
+                rf'{re.escape(semester)}\s+(PR:[^A-Z]*(?:[A-Z]{{2,4}}\s+\d{{3}}|CHECKLIST))',
+                clean_text[match.end():match.end()+100],
+                re.IGNORECASE
+            )
+            notes = notes_match.group(1).strip() if notes_match else None
+            if notes:
+                notes = re.sub(r'\s+(IST|CHECKLIST).*$', '', notes).strip()
+            
+            course = {
+                'course_code': course_code,
+                'course_title': title,
+                'course_name': title,
+                'units': units,
+                'credits': units,
+                'semester_taken': semester,
+                'notes': notes,
+                'section': current_section,
+                'completed': True
+            }
+            
+            courses.append(course)
+            print(f"  Extracted: {course_code} - {title} ({semester})")
+        
+        # Extract courses with partial codes (IST without number)
+        # Only add if not already in the list (avoid duplicates)
+        existing_codes = {c['course_code'] for c in courses}
+        
+        for match in re.finditer(pattern_partial, clean_text, re.IGNORECASE):
+            dept = match.group(1)
+            title = match.group(2).strip()
+            units = int(match.group(3))
+            season = match.group(4)
+            year = match.group(5)
+            
+            # Skip if this looks like it matches a full course we already extracted
+            if any(title.lower() in c['course_title'].lower() for c in courses):
+                continue
+            
+            course_code = f"{dept}"  # Just department code
+            semester = f"{season} {year}"
+            
+            # Determine section
+            course_pos = match.start()
+            current_section = None
+            for i, (pos, section_type) in enumerate(section_positions):
+                if course_pos > pos:
+                    current_section = section_type
+                    if i + 1 < len(section_positions) and course_pos > section_positions[i+1][0]:
+                        continue
+                    break
+            
+            if not current_section:
+                continue
+            
+            course = {
+                'course_code': course_code,
+                'course_title': title,
+                'course_name': title,
+                'units': units,
+                'credits': units,
+                'semester_taken': semester,
+                'notes': None,
+                'section': current_section,
+                'completed': True
+            }
+            
+            courses.append(course)
+            print(f"  Extracted: {course_code} - {title} ({semester}) [partial code]")
         
         return courses
     

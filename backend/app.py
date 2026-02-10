@@ -58,6 +58,7 @@ class UserCourse(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
     completed = db.Column(db.Boolean, default=False)
     grade = db.Column(db.String(5))
+    semester_taken = db.Column(db.String(20))  # e.g. "Fall 2025", "Spring 2026"
 
 class AdvisingSheet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -297,13 +298,15 @@ def upload():
                 user_id=current_user.id,
                 course_id=course.id,
                 completed=course_data.get('completed', False),
-                grade=course_data.get('grade', '')
+                grade=course_data.get('grade', ''),
+                semester_taken=course_data.get('semester_taken')  # Save semester info
             )
             db.session.add(user_course)
             courses_updated += 1
         else:
             user_course.completed = course_data.get('completed', False)
             user_course.grade = course_data.get('grade', '')
+            user_course.semester_taken = course_data.get('semester_taken')  # Update semester info
             courses_updated += 1
     
     db.session.commit()
@@ -418,23 +421,24 @@ def journey():
     # Get all courses
     courses = Course.query.all()
     
-    # Get user's completed courses as a dictionary for fast lookup
-    user_courses = {
-        uc.course_id: uc.completed
-        for uc in UserCourse.query.filter_by(user_id=current_user.id).all()
-    }
+    # Get user's completed courses with semester info as a dictionary
+    user_courses_map = {}
+    for uc in UserCourse.query.filter_by(user_id=current_user.id).all():
+        user_courses_map[uc.course_id] = uc
     
     # Build nodes - each course is a node
-    nodes = [
-        {
+    nodes = []
+    for c in courses:
+        uc = user_courses_map.get(c.id)
+        nodes.append({
             'id': c.code,
             'label': c.name,
-            'completed': user_courses.get(c.id, False),
+            'completed': uc.completed if uc else False,
             'required': c.required,
-            'credits': c.credits
-        }
-        for c in courses
-    ]
+            'credits': c.credits,
+            'semester': uc.semester_taken if uc else None  # Add semester info
+        })
+
     
     # Build edges - prerequisites create directed edges
     edges = []
