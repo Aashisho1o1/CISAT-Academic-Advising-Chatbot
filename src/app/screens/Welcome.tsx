@@ -29,7 +29,7 @@ export default function Welcome() {
           </h1>
 
           <p className="text-lg mb-8" style={{ color: 'var(--gray-600)' }}>
-            Your AI-powered graduation planning companion for the CISAT MS program
+            Your AI-powered graduation planning and course selection companion for the CISAT MS program
           </p>
 
           <div className="grid gap-4 mb-10 text-left">
