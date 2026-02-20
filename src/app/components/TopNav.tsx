@@ -1,12 +1,11 @@
 import { Link } from 'react-router';
 
-// showNavigation is kept for API compatibility (Welcome.tsx passes false)
-// but the Components dev link has been removed — it's gated in routes.ts instead.
+// Welcome passes showNavigation={false}; we use it to switch home-page branding text.
 interface TopNavProps {
   showNavigation?: boolean;
 }
 
-export function TopNav({ showNavigation: _showNavigation = true }: TopNavProps) {
+export function TopNav({ showNavigation = true }: TopNavProps) {
   return (
     <nav
       className="h-16 border-b flex items-center justify-between px-8"
@@ -18,7 +17,9 @@ export function TopNav({ showNavigation: _showNavigation = true }: TopNavProps) 
       <div className="flex items-center gap-8">
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded flex items-center justify-center" style={{ backgroundColor: 'var(--gray-900)' }}>
-            <span className="text-white font-bold text-lg">CGU</span>
+            <span className={`text-white font-bold ${showNavigation ? 'text-lg' : 'text-[10px] tracking-wide'}`}>
+              {showNavigation ? 'CGU' : 'CISAT'}
+            </span>
           </div>
           <span className="font-semibold" style={{ color: 'var(--gray-900)', fontSize: '15px' }}>
             CISAT Advising

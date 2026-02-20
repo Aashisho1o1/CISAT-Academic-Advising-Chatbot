@@ -25,11 +25,11 @@ export default function Welcome() {
           </div>
 
           <h1 className="mb-4" style={{ color: 'var(--gray-900)' }}>
-            CISAT Academic Advising Assistant
+            <span style={{ fontSize: '1.12em' }}>CISAT</span> Academic Advising Chatbot
           </h1>
 
           <p className="text-lg mb-8" style={{ color: 'var(--gray-600)' }}>
-            Your AI-powered graduation planning companion for CGU's CISAT MS program
+            Your AI-powered graduation planning companion for the CISAT MS program
           </p>
 
           <div className="grid gap-4 mb-10 text-left">
@@ -43,7 +43,7 @@ export default function Welcome() {
               <Sparkles className="w-5 h-5 mt-0.5" style={{ color: 'var(--cgu-red)' }} />
               <div>
                 <h3 className="font-semibold mb-1" style={{ color: 'var(--gray-900)', fontSize: '1rem' }}>
-                  Smart Course Analysis
+                  Smart Graduation Progress Assistance
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
                   Upload your planning sheet and I'll analyze your progress toward graduation
@@ -97,7 +97,7 @@ export default function Welcome() {
           </button>
 
           <p className="mt-4 text-sm" style={{ color: 'var(--gray-500)' }}>
-            Sign in with your CGU credentials to continue
+            Sign in with your CISAT credentials to continue
           </p>
         </div>
       </main>
