@@ -1,104 +1,22 @@
-# Environment Variables (CRITICAL - Contains API Keys!)
-.env
-.env.local
-.env.*.local
-*.env
-backend/.env
+# Dependencies
+node_modules/
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
+# Build
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-venv/
-ENV/
-env/
-.venv
-
-# Flask
-instance/
-.webassets-cache
-backend/instance/
-backend/__pycache__/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+build/
 
 # Logs
 *.log
-pip-log.txt
-pip-delete-this-directory.txt
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
+# Environment
+.env
+.env.local
 
-# Uploads (may contain sensitive user data)
-backend/uploads/*.pdf
-backend/uploads/*.docx
-backend/uploads/*.xlsx
-backend/uploads/*.csv
-backend/uploads/*.txt
-# Keep sample files
-!backend/uploads/sample_advising_sheet.txt
-!backend/uploads/.gitkeep
-
-# Temporary files
-*.tmp
-*.temp
-*.md.tmp
-backend/uploads/*.md
-
-# Node modules (frontend)
-node_modules/
-frontend/node_modules/
-
-# Frontend build
-frontend/build/
-frontend/dist/
+# Editor
+.vscode/*
+!.vscode/settings.json
+.idea/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Documentation (generated)
-.cache/
-*.bak
-
-# LandingAI Reference (temporary)
-landingai-reference-temp/
