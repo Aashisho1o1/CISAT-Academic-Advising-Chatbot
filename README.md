@@ -2,13 +2,13 @@
 
 Full-stack academic advising assistant with:
 - Flask backend API (`backend/`)
-- React + TypeScript frontend (`frontend/`)
+- React + TypeScript Vite frontend (`frontend/`)
 - SQLite storage for users, courses, and advising sheet extraction results
 
 ## Architecture
 
 - Backend: session-based auth with Flask-Login, SQLAlchemy models, file upload + extraction endpoints.
-- Frontend: route-guarded React app for login, advising sheet upload, and journey visualization.
+- Frontend: multi-screen advising workflow UI (upload, analysis, recommendations, advisor confirmation).
 - Data store: SQLite (default local dev DB).
 
 ## Prerequisites
@@ -45,15 +45,11 @@ Backend default URL: `http://localhost:8000`
 
 ```bash
 cd frontend
-cp .env.example .env
-npm ci
-npm start
+npm install
+npm run dev
 ```
 
-Frontend default URL: `http://localhost:3000`
-
-`frontend/.env` supports:
-- `REACT_APP_API_BASE_URL` (default `http://localhost:8000/api`)
+Frontend default URL: `http://localhost:5173`
 
 ## Database Migrations (Flask-Migrate)
 
@@ -68,8 +64,6 @@ python -m flask --app app db migrate -m "describe schema change"
 python -m flask --app app db upgrade
 ```
 
-For this repo, an initial baseline migration has been created and the existing development DB was stamped to head.
-
 ## Test Commands
 
 Backend:
@@ -83,7 +77,6 @@ Frontend:
 
 ```bash
 cd frontend
-CI=true npm test -- --watchAll=false
 npm run build
 ```
 
@@ -98,4 +91,4 @@ npm run build
 
 GitHub Actions workflow: `.github/workflows/ci.yml`
 - backend dependency install + pytest
-- frontend install + tests + build
+- frontend install + build

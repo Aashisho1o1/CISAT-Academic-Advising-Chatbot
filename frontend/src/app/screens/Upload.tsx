@@ -1,0 +1,75 @@
+import { useNavigate } from 'react-router';
+import { SplitLayout } from '../components/SplitLayout';
+import { AIBubble, UserBubble } from '../components/ChatBubbles';
+import { UploadZone } from '../components/UploadZone';
+import { QuickReplyChip } from '../components/QuickReplyChip';
+import { ChatbotButton } from '../components/ChatbotButton';
+import { ScreenNavigator } from '../components/ScreenNavigator';
+
+export default function Upload() {
+  const navigate = useNavigate();
+
+  const handleUpload = () => {
+    navigate('/processing');
+  };
+
+  const leftPanel = (
+    <div>
+      <div className="mb-6">
+        <h2 className="mb-2" style={{ color: 'var(--gray-900)' }}>
+          Upload Your Planning Sheet
+        </h2>
+        <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
+          Drop your academic planning document here, and I'll analyze your progress.
+        </p>
+      </div>
+      <UploadZone onUpload={handleUpload} />
+    </div>
+  );
+
+  const rightPanel = (
+    <div>
+      <AIBubble>
+        <p>Hello! I'm your CISAT advising assistant. Let's make sure you're on track to graduate.</p>
+        <p className="mt-3">
+          <strong>To get started, please upload your planning sheet.</strong> I can read:
+        </p>
+        <ul className="mt-2 space-y-1">
+          <li>- PDF documents</li>
+          <li>- Excel spreadsheets (.xlsx)</li>
+          <li>- Word documents (.docx)</li>
+        </ul>
+      </AIBubble>
+
+      <UserBubble>What information do you need from my planning sheet?</UserBubble>
+
+      <AIBubble>
+        <p>Great question! I'll extract:</p>
+        <ul className="mt-2 space-y-1">
+          <li>- Completed courses and grades</li>
+          <li>- Courses currently in progress</li>
+          <li>- Any waived or transferred courses</li>
+          <li>- Total units earned so far</li>
+        </ul>
+        <p className="mt-3">
+          Then I'll compare this against CGU's CISAT MS requirements to see what you still need for
+          graduation.
+        </p>
+      </AIBubble>
+
+      <div className="flex flex-wrap gap-2">
+        <QuickReplyChip>Do you store my data?</QuickReplyChip>
+        <QuickReplyChip>How accurate is this?</QuickReplyChip>
+        <QuickReplyChip>Can I edit after upload?</QuickReplyChip>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <ChatbotButton />
+      <ScreenNavigator />
+      <SplitLayout leftPanel={leftPanel} rightPanel={rightPanel} />
+    </>
+  );
+}
