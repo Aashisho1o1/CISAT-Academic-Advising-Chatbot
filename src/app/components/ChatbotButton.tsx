@@ -1,8 +1,9 @@
 import { MessageCircle } from 'lucide-react';
+import { CHATBOT_URL } from '@/config';
 
 export function ChatbotButton() {
   const handleClick = () => {
-    window.open('https://chatgpt.com/g/g-68f72859a0288191afe57daa9afecd90-cisat-advising-assistant', '_blank');
+    window.open(CHATBOT_URL, '_blank', 'noopener,noreferrer');
   };
 
   return (

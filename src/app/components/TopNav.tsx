@@ -1,12 +1,12 @@
-import { Link, useLocation } from 'react-router';
+import { Link } from 'react-router';
 
+// showNavigation is kept for API compatibility (Welcome.tsx passes false)
+// but the Components dev link has been removed — it's gated in routes.ts instead.
 interface TopNavProps {
   showNavigation?: boolean;
 }
 
-export function TopNav({ showNavigation = true }: TopNavProps) {
-  const location = useLocation();
-
+export function TopNav({ showNavigation: _showNavigation = true }: TopNavProps) {
   return (
     <nav
       className="h-16 border-b flex items-center justify-between px-8"
@@ -24,30 +24,13 @@ export function TopNav({ showNavigation = true }: TopNavProps) {
             CISAT Advising
           </span>
         </Link>
-
-        {showNavigation && (
-          <div className="flex gap-1 text-sm">
-            <Link
-              to="/components"
-              className="px-3 py-2 rounded transition-colors"
-              style={{
-                color: location.pathname === '/components' ? 'var(--gray-900)' : 'var(--gray-600)',
-                backgroundColor: location.pathname === '/components' ? 'var(--gray-100)' : 'transparent',
-              }}
-            >
-              Components
-            </Link>
-          </div>
-        )}
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          onClick={() =>
-            window.alert(
-              'This would open a contact form or email client to reach your advisor (Prof. Rachel Zhang at rzhang@cgu.edu)',
-            )
-          }
+        {/* mailto: is the correct lightweight solution for a demo.
+            Replace with a modal or support ticket form in production. */}
+        <a
+          href="mailto:rzhang@cgu.edu"
           className="px-5 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
           style={{
             backgroundColor: 'var(--cgu-red)',
@@ -55,8 +38,12 @@ export function TopNav({ showNavigation = true }: TopNavProps) {
           }}
         >
           Contact Advisor
-        </button>
-        <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--gray-900)' }}>
+        </a>
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'var(--gray-900)' }}
+          aria-label="Student profile"
+        >
           <span className="text-white font-semibold text-sm">JS</span>
         </div>
       </div>

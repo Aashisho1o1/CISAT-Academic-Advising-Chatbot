@@ -12,6 +12,7 @@ export function SplitLayout({ leftPanel, rightPanel }: SplitLayoutProps) {
       <TopNav />
 
       <main className="flex-1 flex">
+        {/* 4rem = TopNav height (h-16). Update both values if nav height changes. */}
         <div
           className="w-2/5 border-r p-8 overflow-y-auto"
           style={{

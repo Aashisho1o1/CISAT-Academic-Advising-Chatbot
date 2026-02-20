@@ -8,6 +8,9 @@ import { ScreenNavigator } from '../components/ScreenNavigator';
 export default function Processing() {
   const navigate = useNavigate();
 
+  // TODO: Replace this timer with a real API call once the backend is connected.
+  // The timer should be removed and replaced with something like:
+  //   api.processDocument(file).then(() => navigate('/course-history'));
   useEffect(() => {
     const timer = setTimeout(() => {
       navigate('/course-history');
@@ -33,8 +36,7 @@ export default function Processing() {
           </h2>
 
           <p style={{ color: 'var(--gray-600)' }}>
-            This usually takes 10-15 seconds. I'm extracting your courses, checking requirements, and
-            preparing recommendations.
+            I'm extracting your courses, checking requirements, and preparing recommendations.
           </p>
 
           <div className="mt-8 space-y-3">

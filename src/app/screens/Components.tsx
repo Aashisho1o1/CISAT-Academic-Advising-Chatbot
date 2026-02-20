@@ -83,7 +83,7 @@ export default function Components() {
             Upload Zone
           </h2>
           <div className="max-w-2xl">
-            <UploadZone onUpload={() => console.log('File uploaded')} />
+            <UploadZone onUpload={() => {}} />
           </div>
         </section>
 
@@ -176,7 +176,7 @@ export default function Components() {
           <h2 className="mb-4" style={{ color: 'var(--gray-900)' }}>
             Human-in-the-Loop Banner
           </h2>
-          <HITLBanner checkpoint={1} onContinue={() => console.log('Continue clicked')} />
+          <HITLBanner checkpoint={1} onContinue={() => {}} />
         </section>
       </main>
     </div>

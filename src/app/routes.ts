@@ -7,6 +7,9 @@ import GapAnalysis from './screens/GapAnalysis';
 import Recommendations from './screens/Recommendations';
 import AdvisorConfirmation from './screens/AdvisorConfirmation';
 import Complete from './screens/Complete';
+import NotFound from './screens/NotFound';
+// Components is a developer reference screen — only register it in dev builds.
+// import.meta.env.DEV is true during `npm run dev` and false in `npm run build`.
 import Components from './screens/Components';
 
 export const router = createBrowserRouter([
@@ -42,12 +45,12 @@ export const router = createBrowserRouter([
     path: '/complete',
     Component: Complete,
   },
+  // Only expose the component library in local development — never in production.
+  ...(import.meta.env.DEV ? [{ path: '/components', Component: Components }] : []),
   {
-    path: '/components',
-    Component: Components,
-  },
-  {
+    // Explicit 404 instead of silently redirecting broken URLs to Welcome.
+    // Previously: { path: '*', Component: Welcome } — this hid broken links.
     path: '*',
-    Component: Welcome,
+    Component: NotFound,
   },
 ]);

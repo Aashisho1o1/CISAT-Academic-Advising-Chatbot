@@ -9,7 +9,10 @@ import { ScreenNavigator } from '../components/ScreenNavigator';
 export default function Upload() {
   const navigate = useNavigate();
 
-  const handleUpload = () => {
+  // _file is prefixed with _ to satisfy noUnusedParameters while the Zustand
+  // store doesn't exist yet. Once global state is wired up, replace this with:
+  //   useAdvisingStore.getState().setUploadedFile(file);
+  const handleUpload = (_file: File) => {
     navigate('/processing');
   };
 

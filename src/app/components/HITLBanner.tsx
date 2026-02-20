@@ -1,7 +1,9 @@
 import { Shield, ChevronRight } from 'lucide-react';
 
 interface HITLBannerProps {
-  checkpoint: number;
+  // Literal union instead of `number` so TypeScript rejects checkpoint={0} or
+  // checkpoint={99} at call sites — the switch only handles 1, 2, and 3.
+  checkpoint: 1 | 2 | 3;
   onContinue: () => void;
   continueLabel?: string;
 }

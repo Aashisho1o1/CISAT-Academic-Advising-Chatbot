@@ -13,8 +13,13 @@ export function UploadZone({ onUpload }: UploadZoneProps) {
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear isDragging when the cursor leaves the component entirely.
+    // Without this check, moving over any child element (the icon, the text)
+    // fires onDragLeave on the parent, causing a visible border-color flicker.
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
