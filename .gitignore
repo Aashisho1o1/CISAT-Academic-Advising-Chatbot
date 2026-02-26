@@ -20,3 +20,9 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Backend
+backend/chroma_db/
+backend/evaluation_logs/*.jsonl
+__pycache__/
+*.pyc

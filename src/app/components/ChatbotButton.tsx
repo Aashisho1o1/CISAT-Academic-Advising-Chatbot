@@ -1,22 +1,21 @@
-import { MessageCircle } from 'lucide-react';
-import { CHATBOT_URL } from '@/config';
+import { useState } from 'react';
+import { MessageCircle, X } from 'lucide-react';
+import { ChatPanel } from './ChatPanel';
 
 export function ChatbotButton() {
-  const handleClick = () => {
-    window.open(CHATBOT_URL, '_blank', 'noopener,noreferrer');
-  };
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <button
-      onClick={handleClick}
-      className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 z-50"
-      style={{
-        backgroundColor: 'var(--cgu-red)',
-        color: 'white',
-      }}
-      title="Try CISAT Chatbot"
-    >
-      <MessageCircle className="w-6 h-6" />
-    </button>
+    <>
+      <ChatPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <button
+        onClick={() => setIsOpen(prev => !prev)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 z-50"
+        style={{ backgroundColor: 'var(--cgu-red)', color: 'white' }}
+        title="Ask CISAT Advisor"
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+      </button>
+    </>
   );
 }
