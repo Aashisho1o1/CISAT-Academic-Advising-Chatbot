@@ -31,7 +31,7 @@ export function TopNav({ showNavigation = true }: TopNavProps) {
         {/* mailto: is the correct lightweight solution for a demo.
             Replace with a modal or support ticket form in production. */}
         <a
-          href="mailto:rzhang@cgu.edu"
+          href="mailto:advisor@cgu.edu"
           className="px-5 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
           style={{
             backgroundColor: 'var(--cgu-red)',

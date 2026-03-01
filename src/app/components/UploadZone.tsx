@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 
+const ALLOWED_EXTENSIONS = ['.pdf', '.xlsx', '.xls', '.docx', '.doc'];
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 interface UploadZoneProps {
   onUpload: (file: File) => void;
 }
@@ -22,18 +26,43 @@ export function UploadZone({ onUpload }: UploadZoneProps) {
     }
   };
 
+  const [error, setError] = useState<string | null>(null);
+
+  const validateFile = (file: File): string | null => {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return `Invalid file type "${ext}". Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum: ${MAX_FILE_SIZE_MB} MB`;
+    }
+    return null;
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    setError(null);
     const file = e.dataTransfer.files[0];
     if (file) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
       onUpload(file);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     const file = e.target.files?.[0];
     if (file) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
       onUpload(file);
     }
   };
@@ -71,8 +100,13 @@ export function UploadZone({ onUpload }: UploadZoneProps) {
         </div>
 
         <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
-          Supports PDF, Excel (.xlsx), and Word (.docx) files
+          Supports PDF, Excel (.xlsx), and Word (.docx) files — max {MAX_FILE_SIZE_MB} MB
         </p>
+        {error && (
+          <p className="text-xs mt-2 font-medium" style={{ color: 'var(--cgu-red)' }}>
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

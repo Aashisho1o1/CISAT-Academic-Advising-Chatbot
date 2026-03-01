@@ -33,7 +33,7 @@ export default function AdvisorConfirmation() {
               Email Sent to Advisor
             </h3>
             <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-              Prof. Rachel Zhang - rzhang@cgu.edu
+              Your Program Advisor
             </p>
           </div>
         </div>
@@ -46,13 +46,13 @@ export default function AdvisorConfirmation() {
           }}
         >
           <p style={{ color: 'var(--gray-700)' }}>
-            <strong>Subject:</strong> Course Recommendation Approval Needed - Jordan Smith
+            <strong>Subject:</strong> Course Recommendation Approval Needed - [Student Name]
           </p>
           <div style={{ color: 'var(--gray-600)' }}>
-            <p className="mb-2">Hi Prof. Zhang,</p>
+            <p className="mb-2">Hi [Advisor Name],</p>
             <p className="mb-2">
-              The CISAT Advising Assistant has generated course recommendations for Jordan Smith (MS
-              CISAT, Class of 2026).
+              The CISAT Advising Assistant has generated course recommendations for [Student Name] (MS
+              CISAT).
             </p>
             <p className="mb-2">
               <strong>Student Status:</strong>
@@ -106,13 +106,15 @@ export default function AdvisorConfirmation() {
         </div>
       </div>
 
-      <button
-        onClick={() => navigate('/complete')}
-        className="w-full mt-6 px-6 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
-        style={{ backgroundColor: 'var(--cgu-red)' }}
-      >
-        Simulate Advisor Approval (Demo)
-      </button>
+      {import.meta.env.DEV && (
+        <button
+          onClick={() => navigate('/complete')}
+          className="w-full mt-6 px-6 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
+          style={{ backgroundColor: 'var(--cgu-red)' }}
+        >
+          Simulate Advisor Approval (Demo)
+        </button>
+      )}
     </div>
   );
 
@@ -123,7 +125,7 @@ export default function AdvisorConfirmation() {
           <Mail className="w-5 h-5" style={{ color: 'var(--cgu-red)' }} />
           <strong>Sent to your advisor!</strong>
         </div>
-        <p>I've emailed <strong>Prof. Rachel Zhang</strong> with:</p>
+        <p>I've emailed <strong>your advisor</strong> with:</p>
         <ul className="mt-3 space-y-1">
           <li>- Your complete course history</li>
           <li>- Gap analysis results</li>
@@ -146,7 +148,7 @@ export default function AdvisorConfirmation() {
 
       <AIBubble>
         <p>
-          This usually takes <strong>24-48 hours</strong>. You'll receive an email at <strong>jsmith@cgu.edu</strong>{' '}
+          This usually takes <strong>24-48 hours</strong>. You'll receive an email notification
           when your advisor responds.
         </p>
         <p className="mt-3 text-sm" style={{ color: 'var(--gray-600)' }}>

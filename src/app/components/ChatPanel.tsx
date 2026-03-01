@@ -25,10 +25,20 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const MAX_MESSAGE_LENGTH = 4000;
 
-    const userMsg: Message = { role: 'user', content: input };
+  const sendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
+    if (trimmed.length > MAX_MESSAGE_LENGTH) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: `Message too long (${trimmed.length} chars). Please keep it under ${MAX_MESSAGE_LENGTH} characters.` },
+      ]);
+      return;
+    }
+
+    const userMsg: Message = { role: 'user', content: trimmed };
     const history = messages;
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -112,6 +122,7 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && sendMessage()}
           placeholder="Ask about deadlines, requirements..."
+          maxLength={MAX_MESSAGE_LENGTH}
           className="flex-1 text-sm px-3 py-2 rounded-lg outline-none"
           style={{ border: '1px solid var(--gray-300)', color: 'var(--gray-800)' }}
         />

@@ -5,6 +5,9 @@ export function ScreenNavigator() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Only render in development mode — this is a debug tool
+  if (!import.meta.env.DEV) return null;
+
   const screens = [
     { path: '/', label: 'Welcome' },
     { path: '/upload', label: 'Upload' },

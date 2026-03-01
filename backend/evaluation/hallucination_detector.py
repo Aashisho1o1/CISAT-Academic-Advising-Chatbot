@@ -10,10 +10,13 @@ performance" + "Develop monitoring systems to track model performance"
 
 import hashlib
 import json
-import os
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from pathlib import Path
-from openai import OpenAI
+
+from openai_client import get_async_client
+
+logger = logging.getLogger("hallucination_detector")
 
 EVAL_LOG_PATH = Path(__file__).parent.parent / "evaluation_logs" / "hallucination_log.jsonl"
 
@@ -68,14 +71,13 @@ Scoring guide:
 """
 
 
-def check_faithfulness(
+async def check_faithfulness(
     user_query: str,
     chatbot_response: str,
     retrieved_chunks: list[str],
-    client: OpenAI | None = None,
 ) -> dict:
     """
-    Evaluate a chatbot response for hallucination using LLM-as-Judge.
+    Evaluate a chatbot response for hallucination using LLM-as-Judge (async).
 
     Returns a dict with:
         - overall_faithfulness_score (float 0.0-1.0)
@@ -96,8 +98,7 @@ def check_faithfulness(
     }
 
     try:
-        if client is None:
-            client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        client = get_async_client()
 
         formatted_chunks = "\n\n".join(
             f"[Source {i + 1}]: {chunk}" for i, chunk in enumerate(retrieved_chunks)
@@ -109,7 +110,7 @@ def check_faithfulness(
             chatbot_response=chatbot_response,
         )
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -139,8 +140,17 @@ def check_faithfulness(
 
     except Exception as e:
         safe_default["error"] = str(e)
-        print(f"[HallucinationDetector] Evaluation failed (non-blocking): {e}")
+        logger.error("Evaluation failed (non-blocking): %s", e)
         return safe_default
+
+
+def _sanitize_log_field(value: list | str) -> list | str:
+    """Sanitize LLM-generated fields before writing to log files."""
+    if isinstance(value, list):
+        return [str(item)[:500] for item in value[:20]]  # cap list size and item length
+    if isinstance(value, str):
+        return value[:1000]
+    return str(value)[:1000]
 
 
 def log_evaluation(
@@ -156,13 +166,13 @@ def log_evaluation(
     try:
         EVAL_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         entry = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "query_hash": hashlib.sha256(user_query.encode()).hexdigest()[:16],
             "response_length": len(chatbot_response),
             "faithfulness_score": faith_result.get("overall_faithfulness_score"),
             "verdict": faith_result.get("overall_verdict"),
             "flagged": faith_result.get("flagged", False),
-            "high_risk_flags": faith_result.get("high_risk_flags", []),
+            "high_risk_flags": _sanitize_log_field(faith_result.get("high_risk_flags", [])),
             "num_unsupported_claims": len(
                 [
                     c
@@ -173,6 +183,6 @@ def log_evaluation(
             "error": faith_result.get("error"),
         }
         with open(EVAL_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
+            f.write(json.dumps(entry, ensure_ascii=True) + "\n")
     except Exception as e:
-        print(f"[HallucinationDetector] Logging failed: {e}")
+        logger.error("Logging failed: %s", e)
