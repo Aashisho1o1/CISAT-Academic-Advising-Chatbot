@@ -7,7 +7,6 @@ Validates the API key once at startup and reuses a single client across all modu
 
 import logging
 import os
-import sys
 
 from openai import AsyncOpenAI, OpenAI
 
@@ -17,15 +16,20 @@ _sync_client: OpenAI | None = None
 _async_client: AsyncOpenAI | None = None
 
 
+class MissingAPIKeyError(RuntimeError):
+    """Raised when the backend is missing its OpenAI API key."""
+
+
 def _get_api_key() -> str:
-    """Return the OpenAI API key or abort with a clear message."""
+    """Return the OpenAI API key or raise a clear configuration error."""
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
-        logger.critical(
+        message = (
             "OPENAI_API_KEY environment variable is not set. "
             "Create a backend/.env file with your key. See SETUP.md."
         )
-        sys.exit(1)
+        logger.critical(message)
+        raise MissingAPIKeyError(message)
     return key
 
 

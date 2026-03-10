@@ -14,10 +14,10 @@ export default function Complete() {
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <CheckCircle2 className="w-8 h-8" style={{ color: 'var(--success)' }} />
-          <h2 style={{ color: 'var(--gray-900)' }}>All Set!</h2>
+          <h2 style={{ color: 'var(--gray-900)' }}>Demo Complete State</h2>
         </div>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          Your graduation plan has been approved by Prof. Zhang
+          This is an example of the final approved-plan screen.
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export default function Complete() {
         }}
       >
         <h3 className="font-semibold mb-4" style={{ color: 'var(--gray-900)' }}>
-          Your Action Plan
+          Example Action Plan
         </h3>
 
         <div className="space-y-4">
@@ -37,7 +37,7 @@ export default function Complete() {
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-4 h-4" style={{ color: 'var(--info)' }} />
               <span className="text-sm font-semibold" style={{ color: 'var(--gray-700)' }}>
-                Fall 2025 (Current)
+                Current Term
               </span>
             </div>
             <div className="pl-6 space-y-1 text-sm">
@@ -50,7 +50,7 @@ export default function Complete() {
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-4 h-4" style={{ color: 'var(--cgu-red)' }} />
               <span className="text-sm font-semibold" style={{ color: 'var(--gray-700)' }}>
-                Spring 2026 (Final Term)
+                Next Term
               </span>
             </div>
             <div className="pl-6 space-y-1 text-sm">
@@ -58,7 +58,7 @@ export default function Complete() {
                 <strong>- IST 340 - AI for Business (4 units)</strong>
               </p>
               <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
-                Registration opens November 15, 2025
+                Check the live academic calendar before registering
               </p>
             </div>
           </div>
@@ -71,9 +71,9 @@ export default function Complete() {
               </span>
             </div>
             <div className="pl-6 text-sm" style={{ color: 'var(--gray-600)' }}>
-              <p>Expected: May 2026</p>
+              <p>Expected: after the final elective is complete</p>
               <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
-                Apply for graduation by March 1, 2026
+                Confirm the official graduation deadline with CGU
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export default function Complete() {
           style={{ backgroundColor: 'var(--cgu-red)' }}
         >
           <Download className="w-4 h-4" />
-          Download Full Report (PDF)
+          Download Demo Report
         </button>
 
         <button
@@ -94,7 +94,7 @@ export default function Complete() {
           style={{ borderColor: 'var(--gray-300)', color: 'var(--gray-700)' }}
         >
           <Mail className="w-4 h-4" />
-          Email Report to Myself
+          Email Demo Report
         </button>
 
         <button
@@ -113,18 +113,17 @@ export default function Complete() {
       <AIBubble>
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--success)' }} />
-          <strong>Your plan is approved!</strong>
+          <strong>Example approved-plan view</strong>
         </div>
-        <p>Prof. Zhang reviewed your recommendations and confirmed:</p>
+        <p>Here is a sample advisor note for the demo flow:</p>
         <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--gray-50)' }}>
           <p className="text-sm" style={{ color: 'var(--gray-700)' }}>
             <em>
-              "IST 340 is an excellent choice given Jordan's strong performance in data analytics courses.
-              This will position them well for AI-related career opportunities."
+              "IST 340 is a reasonable example recommendation for a student with strong analytics coursework."
             </em>
           </p>
           <p className="text-xs mt-2" style={{ color: 'var(--gray-500)' }}>
-            - Prof. Rachel Zhang, Academic Advisor
+            - Sample advisor feedback
           </p>
         </div>
       </AIBubble>
@@ -134,27 +133,25 @@ export default function Complete() {
           <strong>What you need to do:</strong>
         </p>
         <ol className="mt-3 space-y-2">
-          <li>1. Finish your current Fall 2025 courses</li>
-          <li>2. Register for IST 340 when enrollment opens (Nov 15)</li>
-          <li>3. Complete IST 340 in Spring 2026</li>
-          <li>4. Apply for graduation by March 1, 2026</li>
+          <li>1. Finish the current courses</li>
+          <li>2. Check the academic calendar before registration opens</li>
+          <li>3. Complete the final elective</li>
+          <li>4. Confirm graduation deadlines with the program team</li>
         </ol>
       </AIBubble>
 
       <AIBubble>
         <p>
-          <strong>You're on track to graduate in May 2026!</strong>
+          <strong>This is a demo summary, not a saved student record.</strong>
         </p>
         <p className="mt-3 text-sm" style={{ color: 'var(--gray-600)' }}>
-          I've saved this action plan to your student portal. You can always come back and chat with me
-          if you have questions.
+          The current MVP does not save plans to a portal yet. The live backend feature today is the chat assistant.
         </p>
       </AIBubble>
 
       <AIBubble>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          <strong>Need help?</strong> Contact Prof. Zhang at rzhang@cgu.edu or visit the CISAT advising office
-          in Building 3, Room 201.
+          <strong>Need help?</strong> Use the chat assistant for general questions and verify official deadlines with CGU.
         </p>
       </AIBubble>
     </div>

@@ -15,7 +15,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi! I\'m your CISAT academic advisor. Ask me about deadlines, requirements, or anything about your MS program.' },
+    { role: 'assistant', content: 'Hi! I\'m the CISAT advising chat assistant. Ask me about deadlines, requirements, or next steps in the program.' },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,15 +48,25 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
       const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, history }),
+        body: JSON.stringify({ message: trimmed, history }),
       });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 429) throw new Error('Too many requests');
+        if (res.status === 503) throw new Error('Service unavailable');
+        throw new Error(`Server error: ${res.status}`);
+      }
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-    } catch {
+    } catch (error) {
+      const reply =
+        error instanceof Error && error.message === 'Too many requests'
+          ? 'You have hit the chat rate limit. Please wait a minute and try again.'
+          : error instanceof Error && error.message === 'Service unavailable'
+            ? 'The advising chat is not configured yet. Check the backend environment settings.'
+            : 'Sorry, I couldn\'t connect to the advising server. Make sure the backend is running.';
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Sorry, I couldn\'t connect to the advising server. Make sure the backend is running.' },
+        { role: 'assistant', content: reply },
       ]);
     }
     setLoading(false);
@@ -74,7 +84,7 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
         className="flex items-center justify-between px-4 py-3 flex-shrink-0"
         style={{ backgroundColor: 'var(--cgu-red)', color: 'white' }}
       >
-        <span className="font-semibold text-sm">CISAT Academic Advisor</span>
+        <span className="font-semibold text-sm">CISAT Advising Chat</span>
         <button onClick={onClose} className="hover:opacity-75 transition-opacity">
           <X className="w-4 h-4" />
         </button>

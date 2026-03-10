@@ -14,9 +14,9 @@ export function HITLBanner({ checkpoint, onContinue, continueLabel = 'Looks Good
       case 1:
         return 'Please verify your course history is accurate before continuing.';
       case 2:
-        return 'Review the course recommendations before sending to your advisor.';
+        return 'Review these demo recommendations before the future advisor-review step.';
       case 3:
-        return 'Your graduation plan is complete and advisor-approved.';
+        return 'This demo shows what a final reviewed plan could look like.';
       default:
         return 'Please review before continuing.';
     }

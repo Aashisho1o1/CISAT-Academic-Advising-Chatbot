@@ -12,10 +12,10 @@ export default function AdvisorConfirmation() {
     <div>
       <div className="mb-6">
         <h2 className="mb-2" style={{ color: 'var(--gray-900)' }}>
-          Advisor Confirmation
+          Advisor Review Preview
         </h2>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          Your recommendations are being reviewed by faculty
+          This screen shows a demo version of a future advisor handoff.
         </p>
       </div>
 
@@ -29,12 +29,12 @@ export default function AdvisorConfirmation() {
         <div className="flex items-start gap-3 mb-4">
           <Mail className="w-5 h-5 mt-0.5" style={{ color: 'var(--cgu-red)' }} />
           <div className="flex-1">
-            <h3 className="font-semibold mb-1" style={{ color: 'var(--gray-900)' }}>
-              Email Sent to Advisor
-            </h3>
-            <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-              Your Program Advisor
-            </p>
+              <h3 className="font-semibold mb-1" style={{ color: 'var(--gray-900)' }}>
+                Sample Advisor Email Preview
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
+                Simulated faculty review step
+              </p>
           </div>
         </div>
 
@@ -85,10 +85,10 @@ export default function AdvisorConfirmation() {
           <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--success)' }} />
           <div>
             <p className="text-sm font-medium" style={{ color: 'var(--gray-900)' }}>
-              Email Sent to Advisor
+              Sample Handoff Prepared
             </p>
             <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
-              Just now
+              Demo status
             </p>
           </div>
         </div>
@@ -97,10 +97,10 @@ export default function AdvisorConfirmation() {
           <Clock className="w-5 h-5" style={{ color: 'var(--gray-400)' }} />
           <div>
             <p className="text-sm font-medium" style={{ color: 'var(--gray-600)' }}>
-              Awaiting Advisor Approval
+              Waiting For Future Workflow Integration
             </p>
             <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
-              Usually within 24-48 hours
+              No real advisor workflow is connected yet
             </p>
           </div>
         </div>
@@ -123,9 +123,9 @@ export default function AdvisorConfirmation() {
       <AIBubble>
         <div className="flex items-center gap-2 mb-2">
           <Mail className="w-5 h-5" style={{ color: 'var(--cgu-red)' }} />
-          <strong>Sent to your advisor!</strong>
+          <strong>Future advisor handoff preview</strong>
         </div>
-        <p>I've emailed <strong>your advisor</strong> with:</p>
+        <p>This demo shows the kind of summary a future advisor workflow could send:</p>
         <ul className="mt-3 space-y-1">
           <li>- Your complete course history</li>
           <li>- Gap analysis results</li>
@@ -139,17 +139,16 @@ export default function AdvisorConfirmation() {
           <strong>What happens next?</strong>
         </p>
         <ol className="mt-3 space-y-2 text-sm">
-          <li>1. Prof. Zhang reviews the recommendations</li>
-          <li>2. She can approve, modify, or request changes</li>
-          <li>3. You'll get an email when she responds</li>
-          <li>4. We'll create your final action plan</li>
+          <li>1. An advisor reviews the recommendations</li>
+          <li>2. They can approve, modify, or request changes</li>
+          <li>3. The student would receive a follow-up notification</li>
+          <li>4. The app would generate the final action plan</li>
         </ol>
       </AIBubble>
 
       <AIBubble>
         <p>
-          This usually takes <strong>24-48 hours</strong>. You'll receive an email notification
-          when your advisor responds.
+          This is only a demo state today. No real advisor email or approval workflow is connected yet.
         </p>
         <p className="mt-3 text-sm" style={{ color: 'var(--gray-600)' }}>
           <em>(For this demo, click "Simulate Advisor Approval" to continue)</em>

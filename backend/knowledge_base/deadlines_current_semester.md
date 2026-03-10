@@ -1,9 +1,9 @@
-# CISAT MS Program Deadlines — Spring 2026
+# CISAT MS Program Deadlines — Draft Template
 
 Last updated: [DATE]
 Updated by: [Supervisor name]
-Note: This document is the authoritative source for current semester deadlines.
-It is manually maintained by the program coordinator each semester.
+Status: Incomplete draft. Do not rely on this document until all placeholder values have been replaced.
+Note: Once completed, this should become the authoritative source for current semester deadlines.
 
 ---
 

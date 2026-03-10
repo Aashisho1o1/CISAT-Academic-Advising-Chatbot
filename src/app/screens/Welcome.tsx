@@ -29,7 +29,7 @@ export default function Welcome() {
           </h1>
 
           <p className="text-lg mb-8" style={{ color: 'var(--gray-600)' }}>
-            Your AI-powered graduation planning and course selection companion for the CISAT MS program
+            A demo advising workflow plus a live chat assistant for deadline and program questions
           </p>
 
           <div className="grid gap-4 mb-10 text-left">
@@ -43,10 +43,10 @@ export default function Welcome() {
               <Sparkles className="w-5 h-5 mt-0.5" style={{ color: 'var(--cgu-red)' }} />
               <div>
                 <h3 className="font-semibold mb-1" style={{ color: 'var(--gray-900)', fontSize: '1rem' }}>
-                  Smart Graduation Progress Assistance
+                  Demo Graduation Progress Walkthrough
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-                  Upload your planning sheet and I'll analyze your progress toward graduation
+                  Move through a sample planning-sheet flow to preview the advising experience
                 </p>
               </div>
             </div>
@@ -64,7 +64,7 @@ export default function Welcome() {
                   Personalized Recommendations
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-                  Get AI-powered course suggestions tailored to your academic goals
+                  Preview AI-guided course suggestions in a demo student journey
                 </p>
               </div>
             </div>
@@ -79,10 +79,10 @@ export default function Welcome() {
               <Bot className="w-5 h-5 mt-0.5" style={{ color: 'var(--cgu-red)' }} />
               <div>
                 <h3 className="font-semibold mb-1" style={{ color: 'var(--gray-900)', fontSize: '1rem' }}>
-                  Faculty Oversight
+                  Advisor Review Preview
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-                  All recommendations are reviewed and confirmed by your advisor
+                  See how a future advisor review step could fit into the workflow
                 </p>
               </div>
             </div>
@@ -93,11 +93,11 @@ export default function Welcome() {
             className="w-full px-8 py-4 rounded-lg font-semibold text-white text-lg transition-all hover:opacity-90"
             style={{ backgroundColor: 'var(--cgu-red)' }}
           >
-            Get Started with SSO Login
+            Start Demo Workflow
           </button>
 
           <p className="mt-4 text-sm" style={{ color: 'var(--gray-500)' }}>
-            Sign in with your CISAT credentials to continue
+            The workflow screens are a demo today. The live backend feature is the chat assistant.
           </p>
         </div>
       </main>

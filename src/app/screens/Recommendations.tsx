@@ -14,10 +14,10 @@ export default function Recommendations() {
     <div>
       <div className="mb-6">
         <h2 className="mb-2" style={{ color: 'var(--gray-900)' }}>
-          Recommended Courses
+          Demo Course Recommendations
         </h2>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          Based on your progress, here are my top suggestions for your final elective
+          Example course suggestions for a sample student profile
         </p>
       </div>
 
@@ -34,7 +34,7 @@ export default function Recommendations() {
             title="Artificial Intelligence for Business"
             units={4}
             status="recommended"
-            description="Perfect fit for your data analytics background. Offered Spring 2026."
+            description="Good fit for a student with a strong analytics background."
           />
         </div>
 
@@ -73,9 +73,10 @@ export default function Recommendations() {
         </p>
         <ul className="text-sm space-y-1" style={{ color: 'var(--gray-600)' }}>
           <li>- Complements your NLP course (IST 330)</li>
-          <li>- High demand in job market</li>
-          <li>- Offered in your preferred Spring term</li>
-          <li>- Professor has excellent reviews</li>
+          <li>- Builds on recent analytics coursework</li>
+          <li>- Useful for a technology-focused portfolio</li>
+          <li>- Reasonable elective fit for the sample student</li>
+          <li>- Easy to compare with alternative options</li>
         </ul>
       </div>
     </div>
@@ -96,13 +97,13 @@ export default function Recommendations() {
 
       <AIBubble>
         <p>
-          <strong>My top recommendation is IST 340 (AI for Business)</strong> because:
+          <strong>My top demo recommendation is IST 340 (AI for Business)</strong> because:
         </p>
         <ul className="mt-2 space-y-1 text-sm">
           <li>- Pairs perfectly with your current NLP course</li>
           <li>- You earned an A in Data Analytics (IST 310)</li>
-          <li>- Available Spring 2026 (your planned graduation term)</li>
-          <li>- Taught by Dr. Sarah Chen (4.8/5 rating)</li>
+          <li>- It is a strong thematic fit for the sample student</li>
+          <li>- It keeps the recommendation set easy to explain</li>
         </ul>
       </AIBubble>
 
@@ -119,7 +120,7 @@ export default function Recommendations() {
 
       <AIBubble>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          <strong>Next:</strong> These recommendations will be sent to your advisor for final approval.
+          <strong>Next:</strong> In a future version, these recommendations could be sent to an advisor for review.
         </p>
       </AIBubble>
     </div>

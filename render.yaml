@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cisat-advising-chatbot
+    runtime: python
+    buildCommand: npm ci && npm run build && pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEMO_USERNAME
+        sync: false
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: ENABLE_API_DOCS
+        value: "0"
+      - key: ENABLE_RESPONSE_EVALUATION
+        value: "0"
+      - key: DEFAULT_RATE_LIMIT
+        value: "20/minute"
+      - key: CHAT_RATE_LIMIT
+        value: "8/minute"

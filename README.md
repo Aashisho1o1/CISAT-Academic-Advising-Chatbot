@@ -22,18 +22,17 @@ This is not "AI replacing advisors." It is AI helping students prepare better qu
 ## What the Product Does
 
 1. Student uploads a planning sheet (demo flow).
-2. System shows course history and degree-progress summary.
-3. System highlights requirement gaps.
-4. System recommends next courses.
-5. Recommendations go through advisor review checkpoints.
-6. Embedded chatbot answers advising and deadline questions using a local knowledge base.
+2. System walks through a demo course-history and degree-progress summary.
+3. System previews requirement gaps and next-course suggestions.
+4. Demo recommendations and advisor checkpoints are shown in the UI.
+5. Embedded chatbot answers advising questions using a local knowledge base.
 
 ## Safety and Trust Features
 
 - Retrieval-Augmented Generation (RAG): Answers are grounded in program documents.
-- Hallucination checks: Every response is evaluated for faithfulness.
+- Optional hallucination checks: Responses can be evaluated for faithfulness when explicitly enabled.
 - Deadline-aware prompting: Adds stricter rules for deadline-related questions.
-- Human-in-the-loop checkpoints: Students and advisors review before decisions move forward.
+- Demo human-in-the-loop checkpoints: The UI previews where student and advisor review could happen in a future version.
 
 ## Tech Stack
 
@@ -46,10 +45,10 @@ This is not "AI replacing advisors." It is AI helping students prepare better qu
 ## Architecture (High Level)
 
 1. Frontend sends user query to `POST /api/chat`.
-2. Backend detects if the query is deadline-related.
+2. Backend detects if the query is deadline-related and returns a safe fallback if the deadline source is still incomplete.
 3. Backend retrieves relevant knowledge chunks from ChromaDB.
 4. Backend generates response with OpenAI.
-5. Backend runs hallucination-faithfulness evaluation and returns metadata.
+5. Backend can optionally run hallucination-faithfulness evaluation before returning a reply.
 
 ## Project Structure
 
@@ -109,9 +108,15 @@ Backend runs at `http://localhost:8000`.
 
 - Backend:
   - `OPENAI_API_KEY` (required)
+  - `DEMO_USERNAME` and `DEMO_PASSWORD` (optional shared browser login for quick demos)
+  - `CORS_ORIGINS` (optional)
+  - `ALLOWED_HOSTS` (optional)
+  - `DEFAULT_RATE_LIMIT` (optional)
+  - `CHAT_RATE_LIMIT` (optional)
+  - `ENABLE_API_DOCS` (optional, default: disabled)
+  - `ENABLE_RESPONSE_EVALUATION` (optional, default: disabled)
 - Frontend (optional):
-  - `VITE_API_URL` (default: `http://localhost:8000`)
-  - `VITE_CHATBOT_URL` (default points to hosted ChatGPT assistant URL)
+  - `VITE_API_URL` (optional override; default is same-origin, with the Vite dev proxy used locally)
 
 ## API
 
@@ -128,17 +133,69 @@ Request body:
 
 Response includes:
 - `reply`
-- `sources`
-- `hallucination_score`
-- `verdict`
 - `flagged`
 - `is_deadline_query`
 
 ## Current Scope and Limitations
 
 - The multi-step advising UI is currently a demo workflow with mocked progression in parts.
-- Knowledge-base quality depends on document freshness and completeness.
+- While the current-semester deadline knowledge base still contains placeholders, deadline queries return a safe fallback instead of a date answer.
 - Not production-hardened for institutional FERPA/compliance deployment yet.
+
+## Quick Demo Deployment
+
+Fastest path:
+
+1. Push this repo to GitHub.
+2. In Render, create a new Blueprint from the repo.
+3. Render will read [render.yaml](/Users/aahishsunar/Desktop/CGU/Academic%20Advising%20Chatbot/render.yaml).
+4. Set:
+   - `OPENAI_API_KEY`
+   - `DEMO_USERNAME`
+   - `DEMO_PASSWORD`
+5. Open the deployed URL and sign in with the shared browser prompt.
+
+Notes:
+- The backend now serves the built React app, so one URL handles both UI and API.
+- `DEMO_USERNAME` and `DEMO_PASSWORD` are only for short-lived demo access, not real production auth.
+
+## Preferred Demo Deployment
+
+For this codebase, the cleaner quick setup is:
+
+- Vercel for the frontend
+- Railway for the backend
+
+Why this split:
+- Vercel is a good fit for the Vite frontend
+- Railway is a better fit for the current FastAPI + local Chroma backend than Vercel Functions
+
+### Vercel Frontend
+
+- Import the repo into Vercel
+- Framework preset: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+- Set `VITE_API_URL=https://your-railway-backend.up.railway.app`
+- `vercel.json` is already included for SPA routing and basic headers
+
+### Railway Backend
+
+- Import the same repo into Railway
+- Railway will use [Dockerfile](/Users/aahishsunar/Desktop/CGU/Academic%20Advising%20Chatbot/Dockerfile#L1)
+- Set:
+  - `OPENAI_API_KEY`
+  - `CORS_ORIGINS=https://your-vercel-app.vercel.app`
+  - `ALLOWED_HOSTS=your-railway-backend.up.railway.app`
+  - `ENABLE_API_DOCS=0`
+  - `ENABLE_RESPONSE_EVALUATION=0`
+
+Optional:
+- `DEMO_USERNAME`
+- `DEMO_PASSWORD`
+
+Recommendation:
+- For quick boss/team testing, skip backend Basic Auth unless you really need it. It protects the API, but it is awkward when the frontend and backend are on separate domains.
 
 ## Future Improvements
 

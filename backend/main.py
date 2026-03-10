@@ -7,19 +7,114 @@ Integrates RAG retrieval, hallucination detection, and deadline intelligence.
 Run: uvicorn main:app --reload --port 8000
 """
 
+import base64
+import binascii
+import hmac
 import logging
 import os
 import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 load_dotenv()
+
+
+def env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+DEFAULT_RATE_LIMIT = os.environ.get("DEFAULT_RATE_LIMIT", "30/minute")
+CHAT_RATE_LIMIT = os.environ.get("CHAT_RATE_LIMIT", "10/minute")
+ENABLE_API_DOCS = env_flag("ENABLE_API_DOCS")
+ENABLE_RESPONSE_EVALUATION = env_flag("ENABLE_RESPONSE_EVALUATION")
+DEMO_USERNAME = os.environ.get("DEMO_USERNAME")
+DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD")
+DEMO_AUTH_ENABLED = bool(DEMO_USERNAME and DEMO_PASSWORD)
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://localhost:3000",
+    ).split(",")
+    if origin.strip()
+]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if host.strip()
+]
+for env_host in (
+    os.environ.get("RENDER_EXTERNAL_HOSTNAME"),
+    os.environ.get("RAILWAY_PUBLIC_DOMAIN"),
+):
+    if env_host and env_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(env_host)
+
+DEADLINE_KB_PATH = Path(__file__).parent / "knowledge_base" / "deadlines_current_semester.md"
+FRONTEND_DIST_DIR = Path(__file__).parent.parent / "dist"
+INCOMPLETE_DEADLINE_REPLY = (
+    "I can't safely answer that deadline question right now because my current "
+    "semester deadline data is incomplete. Please check the CGU Academic Calendar "
+    "or contact your program coordinator."
+)
+_PLACEHOLDER_MARKERS = (
+    "[ENTER ",
+    "[DATE]",
+    "[SUPERVISOR",
+    "[ADVISOR NAME]",
+    "[STUDENT NAME]",
+    "[APPROVAL LINK]",
+)
+
+
+def has_placeholder_data(chunks: list[str]) -> bool:
+    return any(marker in chunk.upper() for chunk in chunks for marker in _PLACEHOLDER_MARKERS)
+
+
+def deadline_data_is_ready() -> bool:
+    try:
+        kb_text = DEADLINE_KB_PATH.read_text(encoding="utf-8").upper()
+    except OSError:
+        return False
+    return not any(marker in kb_text for marker in _PLACEHOLDER_MARKERS)
+
+
+def _unauthorized_response() -> PlainTextResponse:
+    return PlainTextResponse(
+        "Authentication required.",
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="Demo Access"'},
+    )
+
+
+def is_authorized(auth_header: str | None) -> bool:
+    if not DEMO_AUTH_ENABLED:
+        return True
+    if not auth_header or not auth_header.startswith("Basic "):
+        return False
+
+    try:
+        decoded = base64.b64decode(auth_header.split(" ", 1)[1]).decode("utf-8")
+        username, password = decoded.split(":", 1)
+    except (ValueError, binascii.Error, UnicodeDecodeError):
+        return False
+
+    return hmac.compare_digest(username, DEMO_USERNAME or "") and hmac.compare_digest(
+        password,
+        DEMO_PASSWORD or "",
+    )
+
 
 # --- Structured logging (replaces bare print() calls) ---
 logging.basicConfig(
@@ -28,9 +123,13 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("advising_api")
+DEADLINE_DATA_READY = deadline_data_is_ready()
+
+if not DEADLINE_DATA_READY:
+    logger.warning("Deadline knowledge base is incomplete. Deadline answers will return a safe fallback.")
 
 # Imports after load_dotenv() so env vars are available
-from openai_client import get_async_client  # noqa: E402
+from openai_client import MissingAPIKeyError, get_async_client  # noqa: E402
 from rag import init_knowledge_base, retrieve  # noqa: E402
 from evaluation.hallucination_detector import check_faithfulness, log_evaluation  # noqa: E402
 from evaluation.deadline_router import is_deadline_query  # noqa: E402
@@ -65,7 +164,7 @@ try:
     from slowapi.errors import RateLimitExceeded
     from slowapi.util import get_remote_address
 
-    limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+    limiter = Limiter(key_func=get_remote_address, default_limits=[DEFAULT_RATE_LIMIT])
     _HAS_RATE_LIMITER = True
 except ImportError:
     limiter = None  # type: ignore[assignment]
@@ -90,6 +189,9 @@ app = FastAPI(
     description="RAG-powered academic advising with hallucination detection and deadline intelligence",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
 )
 
 # Register rate limiter if available
@@ -120,17 +222,26 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def demo_basic_auth(request: Request, call_next):
+    if not DEMO_AUTH_ENABLED or request.method == "OPTIONS" or request.url.path == "/health":
+        return await call_next(request)
+    if not is_authorized(request.headers.get("Authorization")):
+        return _unauthorized_response()
+    return await call_next(request)
+
+
 # --- CORS — scoped to actual needs ---
 
-ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:3000",
-).split(",")
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=ALLOWED_HOSTS,
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
@@ -173,7 +284,7 @@ class ChatResponse(BaseModel):
 # --- Main chat endpoint (async) ---
 
 if _HAS_RATE_LIMITER:
-    _chat_decorator = limiter.limit("20/minute")  # type: ignore[union-attr]
+    _chat_decorator = limiter.limit(CHAT_RATE_LIMIT)  # type: ignore[union-attr]
 else:
     def _chat_decorator(fn):  # type: ignore[misc]
         return fn
@@ -188,11 +299,9 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     2. Detect if deadline query → route to enhanced prompt or ask clarifying question
     3. Retrieve relevant chunks from knowledge base (RAG)
     4. Generate response with OpenAI gpt-4o-mini (async)
-    5. Run hallucination detection (post-processing, never blocks response)
+    5. Optionally run hallucination detection
     6. Return response WITHOUT internal evaluation metadata
     """
-    client = get_async_client()
-
     # === STEP 0: Input sanitization ===
     safe_message = sanitize_user_input(req.message)
 
@@ -200,6 +309,13 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     deadline_detected = is_deadline_query(safe_message)
 
     if deadline_detected:
+        if not DEADLINE_DATA_READY:
+            return ChatResponse(
+                reply=INCOMPLETE_DEADLINE_REPLY,
+                flagged=True,
+                is_deadline_query=True,
+            )
+
         clarifying_q = get_clarifying_question(
             safe_message,
             [msg.model_dump() for msg in req.history],
@@ -211,7 +327,19 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
             )
 
     # === STEP 2: RAG retrieval ===
-    chunks = retrieve(safe_message, k=5)
+    try:
+        chunks = retrieve(safe_message, k=5)
+        client = get_async_client()
+    except MissingAPIKeyError as exc:
+        logger.error("Chat unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail="Chat service is not configured.")
+
+    if deadline_detected and (not chunks or has_placeholder_data(chunks)):
+        return ChatResponse(
+            reply=INCOMPLETE_DEADLINE_REPLY,
+            flagged=True,
+            is_deadline_query=True,
+        )
 
     context = (
         "\n\n".join(f"[Source {i + 1}]:\n{chunk}" for i, chunk in enumerate(chunks))
@@ -239,26 +367,28 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     )
     reply = completion.choices[0].message.content or ""
 
-    # === STEP 4: Hallucination detection (post-processing, async) ===
-    faith_result = await check_faithfulness(
-        user_query=safe_message,
-        chatbot_response=reply,
-        retrieved_chunks=chunks,
-    )
-    log_evaluation(safe_message, reply, faith_result)
-
-    if faith_result.get("flagged"):
-        reply += (
-            "\n\n---\n"
-            "⚠️ *Please verify any specific dates or policy details above with the "
-            "CGU Academic Calendar or your program coordinator, as information may "
-            "have changed since our knowledge base was last updated.*"
+    flagged = False
+    if ENABLE_RESPONSE_EVALUATION:
+        faith_result = await check_faithfulness(
+            user_query=safe_message,
+            chatbot_response=reply,
+            retrieved_chunks=chunks,
         )
+        log_evaluation(safe_message, reply, faith_result)
+        flagged = faith_result.get("flagged", False)
+
+        if flagged:
+            reply += (
+                "\n\n---\n"
+                "⚠️ *Please verify any specific dates or policy details above with the "
+                "CGU Academic Calendar or your program coordinator, as information may "
+                "have changed since our knowledge base was last updated.*"
+            )
 
     # Return ONLY client-safe fields — no sources, scores, or verdicts
     return ChatResponse(
         reply=reply,
-        flagged=faith_result.get("flagged", False),
+        flagged=flagged,
         is_deadline_query=deadline_detected,
     )
 
@@ -268,3 +398,22 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+if FRONTEND_DIST_DIR.exists():
+    @app.get("/", include_in_schema=False)
+    async def frontend_index():
+        return FileResponse(FRONTEND_DIST_DIR / "index.html")
+
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def frontend_routes(full_path: str):
+        candidate = (FRONTEND_DIST_DIR / full_path).resolve()
+        try:
+            candidate.relative_to(FRONTEND_DIST_DIR.resolve())
+        except ValueError as exc:
+            raise HTTPException(status_code=404) from exc
+
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST_DIR / "index.html")

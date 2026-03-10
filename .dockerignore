@@ -1,0 +1,13 @@
+.git
+.gitignore
+.vscode
+node_modules
+dist
+src
+.vercel
+README.md
+SETUP.md
+AGENTS.md
+CLAUDE.md
+render.yaml
+vercel.json
