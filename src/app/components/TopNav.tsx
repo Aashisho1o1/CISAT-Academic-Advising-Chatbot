@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 // Welcome passes showNavigation={false}; we use it to switch home-page branding text.
@@ -6,6 +7,27 @@ interface TopNavProps {
 }
 
 export function TopNav({ showNavigation = true }: TopNavProps) {
+  const advisorEmail = 'advisor@cgu.edu';
+  const [contactCopied, setContactCopied] = useState(false);
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
+
+  useEffect(() => {
+    if (!contactCopied) return;
+    const timeoutId = window.setTimeout(() => setContactCopied(false), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [contactCopied]);
+
+  const handleContactAdvisor = async () => {
+    try {
+      await navigator.clipboard.writeText(advisorEmail);
+      setContactCopied(true);
+    } catch {
+      setContactCopied(false);
+    }
+
+    window.location.href = `mailto:${advisorEmail}`;
+  };
+
   return (
     <nav
       className="h-16 border-b flex items-center justify-between px-8"
@@ -27,26 +49,44 @@ export function TopNav({ showNavigation = true }: TopNavProps) {
         </Link>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* mailto: is the correct lightweight solution for a demo.
-            Replace with a modal or support ticket form in production. */}
-        <a
-          href="mailto:advisor@cgu.edu"
+      <div className="relative flex items-center gap-4">
+        <button
+          type="button"
+          onClick={handleContactAdvisor}
           className="px-5 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
           style={{
             backgroundColor: 'var(--cgu-red)',
             color: 'white',
           }}
+          title={`Email ${advisorEmail}`}
         >
-          Contact Advisor
-        </a>
-        <div
+          {contactCopied ? 'Email Copied' : 'Contact Advisor'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowProfilePanel(prev => !prev)}
           className="w-10 h-10 rounded-full flex items-center justify-center"
           style={{ backgroundColor: 'var(--gray-900)' }}
-          aria-label="Student profile"
+          aria-label="Open demo student profile"
         >
           <span className="text-white font-semibold text-sm">JS</span>
-        </div>
+        </button>
+        {showProfilePanel && (
+          <div
+            className="absolute right-0 top-14 w-64 rounded-lg border p-4 shadow-lg"
+            style={{
+              backgroundColor: 'white',
+              borderColor: 'var(--gray-200)',
+            }}
+          >
+            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--gray-900)' }}>
+              Demo student profile
+            </p>
+            <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
+              This MVP does not have real account, settings, or profile features yet.
+            </p>
+          </div>
+        )}
       </div>
     </nav>
   );
