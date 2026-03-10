@@ -408,12 +408,13 @@ if FRONTEND_DIST_DIR.exists():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def frontend_routes(full_path: str):
-        candidate = (FRONTEND_DIST_DIR / full_path).resolve()
+        base_path = FRONTEND_DIST_DIR.resolve()
+        candidate = (base_path / full_path).resolve(strict=False)
         try:
-            candidate.relative_to(FRONTEND_DIST_DIR.resolve())
+            candidate.relative_to(base_path)
         except ValueError as exc:
             raise HTTPException(status_code=404) from exc
 
         if candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(FRONTEND_DIST_DIR / "index.html")
+        return FileResponse(base_path / "index.html")
