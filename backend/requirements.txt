@@ -4,5 +4,5 @@ openai==1.51.0
 chromadb==0.5.7
 python-dotenv==1.0.1
 pydantic==2.9.2
-pypdf==6.7.5
+pypdf==6.8.0
 slowapi==0.1.9
