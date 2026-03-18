@@ -3,6 +3,11 @@ import { X, Send, Loader2 } from 'lucide-react';
 import { AIBubble, UserBubble } from './ChatBubbles';
 import { API_URL } from '@/config';
 
+const INITIAL_ASSISTANT_MESSAGE =
+  'Hi! I\'m the CISAT advising chat assistant. Ask me about deadlines, requirements, or next steps in the program.';
+const MAX_MESSAGE_LENGTH = 4000;
+const REQUEST_HISTORY_LIMIT = 6;
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -15,7 +20,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi! I\'m the CISAT advising chat assistant. Ask me about deadlines, requirements, or next steps in the program.' },
+    { role: 'assistant', content: INITIAL_ASSISTANT_MESSAGE },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,8 +29,6 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
-
-  const MAX_MESSAGE_LENGTH = 4000;
 
   const sendMessage = async () => {
     const trimmed = input.trim();
@@ -39,7 +42,7 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
     }
 
     const userMsg: Message = { role: 'user', content: trimmed };
-    const history = messages;
+    const history = messages.slice(1).slice(-REQUEST_HISTORY_LIMIT);
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
@@ -55,8 +58,12 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
         if (res.status === 503) throw new Error('Service unavailable');
         throw new Error(`Server error: ${res.status}`);
       }
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      const data: { reply?: unknown } = await res.json();
+      if (typeof data.reply !== 'string') {
+        throw new Error('Invalid response');
+      }
+      const reply = data.reply;
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (error) {
       const reply =
         error instanceof Error && error.message === 'Too many requests'
@@ -68,8 +75,9 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
         ...prev,
         { role: 'assistant', content: reply },
       ]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (!isOpen) return null;

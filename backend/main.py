@@ -7,9 +7,11 @@ Integrates RAG retrieval, hallucination detection, and deadline intelligence.
 Run: uvicorn main:app --reload --port 8000
 """
 
+import asyncio
 import base64
 import binascii
 import hmac
+import json
 import logging
 import os
 import re
@@ -18,7 +20,7 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
@@ -61,33 +63,7 @@ for env_host in (
     if env_host and env_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(env_host)
 
-DEADLINE_KB_PATH = Path(__file__).parent / "knowledge_base" / "deadlines_current_semester.md"
 FRONTEND_DIST_DIR = Path(__file__).parent.parent / "dist"
-INCOMPLETE_DEADLINE_REPLY = (
-    "I can't safely answer that deadline question right now because my current "
-    "semester deadline data is incomplete. Please check the CGU Academic Calendar "
-    "or contact your program coordinator."
-)
-_PLACEHOLDER_MARKERS = (
-    "[ENTER ",
-    "[DATE]",
-    "[SUPERVISOR",
-    "[ADVISOR NAME]",
-    "[STUDENT NAME]",
-    "[APPROVAL LINK]",
-)
-
-
-def has_placeholder_data(chunks: list[str]) -> bool:
-    return any(marker in chunk.upper() for chunk in chunks for marker in _PLACEHOLDER_MARKERS)
-
-
-def deadline_data_is_ready() -> bool:
-    try:
-        kb_text = DEADLINE_KB_PATH.read_text(encoding="utf-8").upper()
-    except OSError:
-        return False
-    return not any(marker in kb_text for marker in _PLACEHOLDER_MARKERS)
 
 
 def _unauthorized_response() -> PlainTextResponse:
@@ -123,18 +99,10 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("advising_api")
-DEADLINE_DATA_READY = deadline_data_is_ready()
-
-if not DEADLINE_DATA_READY:
-    logger.warning("Deadline knowledge base is incomplete. Deadline answers will return a safe fallback.")
 
 # Imports after load_dotenv() so env vars are available
 from openai_client import MissingAPIKeyError, get_async_client  # noqa: E402
-from rag import init_knowledge_base, retrieve  # noqa: E402
-from evaluation.hallucination_detector import check_faithfulness, log_evaluation  # noqa: E402
-from evaluation.deadline_router import is_deadline_query  # noqa: E402
-from evaluation.deadline_prompts import BASE_SYSTEM_PROMPT, DEADLINE_SYSTEM_PROMPT  # noqa: E402
-from evaluation.deadline_personalizer import get_clarifying_question  # noqa: E402
+from assistant import get_or_create_assistant # noqa: E402
 
 
 # --- Prompt injection defense ---
@@ -176,12 +144,18 @@ except ImportError:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load knowledge base on startup. Boots in degraded mode if indexing fails."""
+    """Initialize OpenAI Assistant on startup."""
+    logger.info("Initializing application lifespan...")
     try:
-        init_knowledge_base()
+        get_or_create_assistant()
+        logger.info("OpenAI Assistant initialized successfully.")
     except Exception as e:
-        logger.error("Knowledge base init failed (degraded mode): %s", e)
+        logger.critical("FATAL: Could not initialize OpenAI Assistant: %s", e, exc_info=True)
+        # In a real-world scenario, you might want the app to fail to start
+        # if the assistant is critical. For now, we log it as critical.
+        raise e
     yield
+    logger.info("Application shutdown.")
 
 
 app = FastAPI(
@@ -261,136 +235,204 @@ async def global_exception_handler(request: Request, exc: Exception):
 # --- Request / Response models (with validation) ---
 
 MAX_MESSAGE_LENGTH = 4000
-MAX_HISTORY_LENGTH = 20
-
-
-class Message(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(..., max_length=MAX_MESSAGE_LENGTH)
 
 
 class ChatRequest(BaseModel):
+    """Request model for the main chat endpoint, using a thread ID."""
+
+    thread_id: str
     message: str = Field(..., min_length=1, max_length=MAX_MESSAGE_LENGTH)
-    history: list[Message] = Field(default_factory=list, max_length=MAX_HISTORY_LENGTH)
+    # The frontend should send the file_id only with the first message.
+    file_ids: list[str] = Field(default_factory=list)
+
+
+class ToolCall(BaseModel):
+    """Model for a tool call command to be sent to the frontend."""
+
+    name: str
+    args: dict
 
 
 class ChatResponse(BaseModel):
-    """Client-facing response. Internal evaluation data is NOT exposed."""
-    reply: str
+    """
+    Response model that can contain either a text reply or a frontend tool call.
+    """
+
+    reply: str | None = None
+    tool_call: ToolCall | None = None
+    # The following fields from the old response are no longer needed
+    # with the new Assistant-based logic, but are kept for compatibility
+    # if you need a phased rollout. For this migration, they are optional.
     flagged: bool = False
     is_deadline_query: bool = False
 
 
-# --- Main chat endpoint (async) ---
+
+# --- Main API endpoints (async) ---
 
 if _HAS_RATE_LIMITER:
     _chat_decorator = limiter.limit(CHAT_RATE_LIMIT)  # type: ignore[union-attr]
 else:
+
     def _chat_decorator(fn):  # type: ignore[misc]
         return fn
+
+
+@app.post("/api/upload-plan", response_model=UploadPlanResponse)
+@_chat_decorator
+async def upload_plan(file: UploadFile = File(...)):
+    """
+    Accepts a student's graduation plan file, uploads it to OpenAI,
+    and creates a new conversation thread. The file is NOT yet attached
+    to the thread; the returned file_id must be passed to the /chat
+    endpoint with the first message to create the attachment.
+    """
+    try:
+        client = get_async_client()
+
+        file_content = await file.read()
+        if not file.filename:
+            # Provide a fallback filename if it's missing
+            file.filename = "student_plan"
+
+        # Upload the file to OpenAI. The 'purpose' is crucial for Assistants API.
+        uploaded_file = await client.files.create(
+            file=(file.filename, file_content, file.content_type), purpose="assistants"
+        )
+
+        # Create a new thread for the user session.
+        # Messages and attachments will be added in the /chat endpoint.
+        thread = await client.beta.threads.create()
+
+        logger.info(
+            f"New plan uploaded and thread created. File ID: {uploaded_file.id}, Thread ID: {thread.id}"
+        )
+
+        return UploadPlanResponse(thread_id=thread.id, file_id=uploaded_file.id)
+
+    except MissingAPIKeyError as exc:
+        logger.error("Upload plan failed: %s", exc)
+        raise HTTPException(status_code=503, detail="Chat service is not configured.")
+    except Exception:
+        logger.exception("Error during file upload and thread creation.")
+        # Do not leak internal exception details to the client
+        raise HTTPException(status_code=500, detail="Failed to process file.")
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 @_chat_decorator
 async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     """
-    Main chat endpoint. Flow:
-    1. Sanitize user input (prompt injection defense)
-    2. Detect if deadline query → route to enhanced prompt or ask clarifying question
-    3. Retrieve relevant chunks from knowledge base (RAG)
-    4. Generate response with OpenAI gpt-4o-mini (async)
-    5. Optionally run hallucination detection
-    6. Return response WITHOUT internal evaluation metadata
+    Main chat endpoint, rewritten for the OpenAI Assistants API.
+    Flow:
+    1. Add user's message (and optional file) to the specified thread.
+    2. Create a Run to process the thread with the Assistant.
+    3. Poll the Run's status until it completes, fails, or requires action.
+    4. Handle 'requires_action' for tool calls (backend execution or frontend forwarding).
+    5. On completion, retrieve the Assistant's reply and send it to the client.
     """
-    # === STEP 0: Input sanitization ===
-    safe_message = sanitize_user_input(req.message)
+    client = get_async_client()
+    assistant_id = os.environ.get("OPENAI_ASSISTANT_ID")
+    if not assistant_id:
+        logger.error("OPENAI_ASSISTANT_ID is not set.")
+        raise HTTPException(status_code=503, detail="Assistant is not configured.")
 
-    # === STEP 1: Deadline routing ===
-    deadline_detected = is_deadline_query(safe_message)
-
-    if deadline_detected:
-        if not DEADLINE_DATA_READY:
-            return ChatResponse(
-                reply=INCOMPLETE_DEADLINE_REPLY,
-                flagged=True,
-                is_deadline_query=True,
-            )
-
-        clarifying_q = get_clarifying_question(
-            safe_message,
-            [msg.model_dump() for msg in req.history],
-        )
-        if clarifying_q:
-            return ChatResponse(
-                reply=clarifying_q,
-                is_deadline_query=True,
-            )
-
-    # === STEP 2: RAG retrieval ===
     try:
-        chunks = retrieve(safe_message, k=5)
-        client = get_async_client()
-    except MissingAPIKeyError as exc:
-        logger.error("Chat unavailable: %s", exc)
-        raise HTTPException(status_code=503, detail="Chat service is not configured.")
+        # Sanitize user input before sending to OpenAI
+        safe_message = sanitize_user_input(req.message)
 
-    if deadline_detected and (not chunks or has_placeholder_data(chunks)):
-        return ChatResponse(
-            reply=INCOMPLETE_DEADLINE_REPLY,
-            flagged=True,
-            is_deadline_query=True,
+        # Step 1: Add the user's message to the thread.
+        # The `file_ids` list should be provided by the client on the first message.
+        attachments = [
+            {"file_id": file_id, "tools": [{"type": "file_search"}]}
+            for file_id in req.file_ids
+        ]
+        await client.beta.threads.messages.create(
+            thread_id=req.thread_id,
+            role="user",
+            content=safe_message,
+            attachments=attachments or None,  # Use None if attachments list is empty
         )
+        logger.info(f"Appended message to thread {req.thread_id}")
 
-    context = (
-        "\n\n".join(f"[Source {i + 1}]:\n{chunk}" for i, chunk in enumerate(chunks))
-        if chunks
-        else "No relevant documents found in the knowledge base."
-    )
-
-    system_prompt = (
-        DEADLINE_SYSTEM_PROMPT if deadline_detected else BASE_SYSTEM_PROMPT
-    )
-    system_prompt_with_context = f"{system_prompt}\n\n---\nKnowledge Base Context:\n{context}"
-
-    # === STEP 3: Generate response (async) ===
-    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt_with_context}]
-
-    for msg in req.history[-10:]:  # Keep last 10 turns to avoid token bloat
-        messages.append({"role": msg.role, "content": msg.content})
-
-    messages.append({"role": "user", "content": safe_message})
-
-    completion = await client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,  # type: ignore[arg-type]
-        temperature=0.2,
-    )
-    reply = completion.choices[0].message.content or ""
-
-    flagged = False
-    if ENABLE_RESPONSE_EVALUATION:
-        faith_result = await check_faithfulness(
-            user_query=safe_message,
-            chatbot_response=reply,
-            retrieved_chunks=chunks,
+        # Step 2: Create a Run
+        run = await client.beta.threads.runs.create(
+            thread_id=req.thread_id, assistant_id=assistant_id
         )
-        log_evaluation(safe_message, reply, faith_result)
-        flagged = faith_result.get("flagged", False)
+        logger.info(f"Created run {run.id} for thread {req.thread_id}")
 
-        if flagged:
-            reply += (
-                "\n\n---\n"
-                "⚠️ *Please verify any specific dates or policy details above with the "
-                "CGU Academic Calendar or your program coordinator, as information may "
-                "have changed since our knowledge base was last updated.*"
+        # Step 3: Poll the Run's status
+        while run.status in ["queued", "in_progress"]:
+            await asyncio.sleep(1)  # Use asyncio.sleep in async functions
+            run = await client.beta.threads.runs.retrieve(
+                thread_id=req.thread_id, run_id=run.id
             )
+            logger.info(f"Run {run.id} status: {run.status}")
 
-    # Return ONLY client-safe fields — no sources, scores, or verdicts
-    return ChatResponse(
-        reply=reply,
-        flagged=flagged,
-        is_deadline_query=deadline_detected,
-    )
+        # Step 4: Handle terminal states
+        if run.status == "completed":
+            messages = await client.beta.threads.messages.list(thread_id=req.thread_id)
+            # The latest message is the first in the list
+            assistant_reply = messages.data[0].content[0].text.value
+            return ChatResponse(reply=assistant_reply)
+
+        elif run.status == "requires_action":
+            if run.required_action is None:
+                 raise HTTPException(status_code=500, detail="Run requires action, but no action was specified.")
+
+            tool_calls = run.required_action.submit_tool_outputs.tool_calls
+            tool_outputs = []
+
+            for tool in tool_calls:
+                func_name = tool.function.name
+                func_args = json.loads(tool.function.arguments)
+
+                if func_name == "trigger_ui_navigation":
+                    # This tool is for the frontend. We stop and return the call.
+                    logger.info(f"Forwarding UI navigation tool call to frontend: {func_args}")
+                    return ChatResponse(tool_call=ToolCall(name=func_name, args=func_args))
+
+                elif func_name == "email_supervisor":
+                    # This is a backend tool. We "execute" it and continue.
+                    logger.info(f"Executing backend tool '{func_name}' with args: {func_args}")
+                    # In a real app, this would trigger an email. Here we just confirm.
+                    output = {"status": "success", "message": f"Supervisor has been notified about: {func_args.get('issue_summary')}"}
+                    tool_outputs.append(
+                        {"tool_call_id": tool.id, "output": json.dumps(output)}
+                    )
+
+            # If there were any backend tools, submit their outputs
+            if tool_outputs:
+                logger.info(f"Submitting tool outputs for run {run.id}")
+                run = await client.beta.threads.runs.submit_tool_outputs(
+                    thread_id=req.thread_id, run_id=run.id, tool_outputs=tool_outputs
+                )
+                # Re-enter polling loop to get the final assistant response
+                while run.status in ["queued", "in_progress"]:
+                    await asyncio.sleep(1)
+                    run = await client.beta.threads.runs.retrieve(
+                        thread_id=req.thread_id, run_id=run.id
+                    )
+                    logger.info(f"Run {run.id} status after tool submission: {run.status}")
+
+                if run.status == "completed":
+                    messages = await client.beta.threads.messages.list(thread_id=req.thread_id)
+                    assistant_reply = messages.data[0].content[0].text.value
+                    return ChatResponse(reply=assistant_reply)
+
+        # Handle other terminal states
+        logger.error(f"Run ended with status: {run.status}. Details: {run.last_error}")
+        detail = f"Assistant run failed with status: {run.status}"
+        if run.last_error:
+            detail += f" - {run.last_error.message}"
+        raise HTTPException(status_code=500, detail=detail)
+
+    except MissingAPIKeyError as exc:
+        logger.error("Chat failed: %s", exc)
+        raise HTTPException(status_code=503, detail="Chat service is not configured.")
+    except Exception as e:
+        logger.exception("An unexpected error occurred in the /api/chat endpoint.")
+        raise HTTPException(status_code=500, detail="An internal server error occurred.")
 
 
 # --- Health check (no service name disclosure) ---

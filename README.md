@@ -29,26 +29,33 @@ This is not "AI replacing advisors." It is AI helping students prepare better qu
 
 ## Safety and Trust Features
 
-- Retrieval-Augmented Generation (RAG): Answers are grounded in program documents.
-- Optional hallucination checks: Responses can be evaluated for faithfulness when explicitly enabled.
-- Deadline-aware prompting: Adds stricter rules for deadline-related questions.
-- Demo human-in-the-loop checkpoints: The UI previews where student and advisor review could happen in a future version.
+- **Official OpenAI Tooling**: The entire document analysis and retrieval process is now handled by the OpenAI Assistants API using the `file_search` tool, which is more robust and accurate than the previous manual RAG implementation.
+- **Strictly Defined Functions**: The Assistant's capabilities are limited to a small set of strictly-defined functions (`email_supervisor`, `trigger_ui_navigation`), preventing open-ended, unconstrained actions.
+- **Tool-Based Guardrails**: Instead of relying on prompt engineering for safety, the new architecture uses explicit tool calls. The Assistant must output a structured JSON command to perform any action, which the backend can then safely validate and execute.
+- **Demo human-in-the-loop checkpoints**: The UI previews where student and advisor review could happen in a future version.
 
 ## Tech Stack
 
-- Frontend: React 18, TypeScript, Vite, Tailwind CSS v4
-- Backend: FastAPI, OpenAI API, ChromaDB, PyPDF
+- Frontend: React 18, TypeScript, Vite, Tailwind CSS
+- Backend: FastAPI, OpenAI Assistants API
 - AI Models:
-  - `gpt-4o-mini` for response generation and evaluation
-  - `text-embedding-3-small` for semantic retrieval
+  - `gpt-4o-mini` (or newer) as the core Assistant model
+  - OpenAI's built-in `file_search` tool for retrieval
 
 ## Architecture (High Level)
 
-1. Frontend sends user query to `POST /api/chat`.
-2. Backend detects if the query is deadline-related and returns a safe fallback if the deadline source is still incomplete.
-3. Backend retrieves relevant knowledge chunks from ChromaDB.
-4. Backend generates response with OpenAI.
-5. Backend can optionally run hallucination-faithfulness evaluation before returning a reply.
+The new architecture uses a "Headless Assistant" model, where the backend acts as a secure router and tool executor for the OpenAI Assistants API.
+
+1.  **File Upload**: The React frontend uploads a student's plan to `POST /api/upload-plan`.
+2.  **Secure File Transfer**: The FastAPI backend receives the file and uploads it directly to the OpenAI Files API, receiving a `file_id`.
+3.  **Thread Creation**: The backend creates a new conversation `thread_id` for the user's session and returns both IDs to the frontend.
+4.  **Chat Interaction**: On subsequent messages, the frontend calls `POST /api/chat` with the `thread_id`, user message, and the `file_id` (for the first message).
+5.  **Assistant Run**: The backend adds the message and file to the OpenAI Thread and creates a "Run".
+6.  **Polling & Response**: The backend polls the Run's status.
+    - If **completed**, it returns the Assistant's text reply.
+    - If **requires_action**, the backend checks the tool call. It either executes a backend function (like sending an email) and continues the Run, or it forwards the tool call to the frontend (like a UI navigation command).
+
+This eliminates the need for a local vector database, manual document chunking, and history management.
 
 ## Project Structure
 
@@ -56,10 +63,9 @@ This is not "AI replacing advisors." It is AI helping students prepare better qu
 .
 ├── src/                          # React frontend
 ├── backend/
-│   ├── main.py                   # FastAPI app
-│   ├── rag.py                    # RAG indexing + retrieval
-│   ├── knowledge_base/           # Advising/deadline source docs
-│   └── evaluation/               # Hallucination + deadline logic
+│   ├── main.py                   # FastAPI app with /upload and /chat endpoints
+│   ├── assistant.py              # Assistant creation & tool definitions
+│   └── assistant.json            # Stores the persistent ID of the created Assistant
 ├── SETUP.md
 └── README.md
 ```
@@ -102,23 +108,36 @@ Run backend:
 uvicorn main:app --reload --port 8000
 ```
 
-Backend runs at `http://localhost:8000`.
+Backend runs at `http://localhost:8000`. The first time you run it, it will create a new OpenAI Assistant and save its ID in `backend/assistant.json`.
 
 ## Environment Variables
 
 - Backend:
   - `OPENAI_API_KEY` (required)
+  - `OPENAI_ASSISTANT_ID` (optional, overrides the ID in `assistant.json`)
   - `DEMO_USERNAME` and `DEMO_PASSWORD` (optional shared browser login for quick demos)
   - `CORS_ORIGINS` (optional)
   - `ALLOWED_HOSTS` (optional)
   - `DEFAULT_RATE_LIMIT` (optional)
   - `CHAT_RATE_LIMIT` (optional)
   - `ENABLE_API_DOCS` (optional, default: disabled)
-  - `ENABLE_RESPONSE_EVALUATION` (optional, default: disabled)
 - Frontend (optional):
   - `VITE_API_URL` (optional override; default is same-origin, with the Vite dev proxy used locally)
 
 ## API
+
+### `POST /api/upload-plan`
+
+Accepts a `multipart/form-data` file upload.
+
+Response:
+
+```json
+{
+  "thread_id": "thread_abc123",
+  "file_id": "file_xyz789"
+}
+```
 
 ### `POST /api/chat`
 
@@ -126,15 +145,36 @@ Request body:
 
 ```json
 {
-  "message": "When is the graduation application deadline?",
-  "history": [{ "role": "user", "content": "..." }]
+  "thread_id": "thread_abc123",
+  "message": "Is my plan on track?",
+  "file_ids": ["file_xyz789"]
+}
+```
+*Note: `file_ids` should only be sent with the first message in a thread.*
+
+Response can be a text reply:
+```json
+{
+    "reply": "Yes, your plan looks good. I've analyzed the document you provided...",
+    "tool_call": null
 }
 ```
 
-Response includes:
-- `reply`
-- `flagged`
-- `is_deadline_query`
+Or a tool call for the frontend:
+```json
+{
+    "reply": null,
+    "tool_call": {
+        "name": "trigger_ui_navigation",
+        "args": {
+            "target_route": "GapAnalysis",
+            "extracted_data": {
+                "missing_courses": ["CSCI 507", "CSCI 509"]
+            }
+        }
+    }
+}
+```
 
 ## Current Scope and Limitations
 
