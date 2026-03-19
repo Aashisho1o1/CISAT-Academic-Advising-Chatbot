@@ -494,13 +494,15 @@ if FRONTEND_DIST_DIR.exists():
     @app.get("/{full_path:path}", include_in_schema=False)
     async def frontend_routes(full_path: str):
         base_path = FRONTEND_DIST_DIR.resolve()
-        # Construct candidate path from user-provided segment, then resolve it
-        candidate = (base_path / full_path).resolve(strict=False)
+        # Normalize user-provided path segment relative to the frontend dist directory
+        unsafe_segment = Path(full_path)
         try:
+            # Resolve against base_path; this collapses ".." and follows symlinks
+            candidate = (base_path / unsafe_segment).resolve()
             # Ensure the resolved candidate is within the frontend dist directory
             candidate.relative_to(base_path)
-        except ValueError as exc:
-            # Any attempt to escape the base path results in a 404
+        except (ValueError, OSError) as exc:
+            # Any attempt to escape the base path or invalid resolution results in a 404
             raise HTTPException(status_code=404) from exc
 
         # Only serve a file if it exists and is a regular file under base_path
