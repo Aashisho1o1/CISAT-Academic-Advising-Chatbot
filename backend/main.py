@@ -130,9 +130,15 @@ def sanitize_user_input(text: str) -> str:
 try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
-    from slowapi.util import get_remote_address
 
-    limiter = Limiter(key_func=get_remote_address, default_limits=[DEFAULT_RATE_LIMIT])
+    def get_real_ip(request: Request) -> str:
+        if forwarded_for := request.headers.get("X-Forwarded-For"):
+            return forwarded_for.split(",")[0].strip()
+        if real_ip := request.headers.get("X-Real-IP"):
+            return real_ip.strip()
+        return request.client.host if request.client else "127.0.0.1"
+
+    limiter = Limiter(key_func=get_real_ip, default_limits=[DEFAULT_RATE_LIMIT])
     _HAS_RATE_LIMITER = True
 except ImportError:
     limiter = None  # type: ignore[assignment]
@@ -397,10 +403,43 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
                     return ChatResponse(tool_call=ToolCall(name=func_name, args=func_args))
 
                 elif func_name == "email_supervisor":
-                    # This is a backend tool. We "execute" it and continue.
+                    # Actual SMTP transport implementation
                     logger.info(f"Executing backend tool '{func_name}' with args: {func_args}")
-                    # In a real app, this would trigger an email. Here we just confirm.
-                    output = {"status": "success", "message": f"Supervisor has been notified about: {func_args.get('issue_summary')}"}
+                    
+                    student_id = func_args.get('student_id', 'Unknown')
+                    issue_summary = func_args.get('issue_summary', 'No summary provided')
+                    
+                    try:
+                        import smtplib
+                        from email.mime.text import MIMEText
+                        
+                        smtp_server = os.environ.get("SMTP_SERVER")
+                        smtp_port = int(os.environ.get("SMTP_PORT", 587))
+                        smtp_user = os.environ.get("SMTP_USERNAME")
+                        smtp_pass = os.environ.get("SMTP_PASSWORD")
+                        smtp_from = os.environ.get("SMTP_FROM", "advising-bot@example.com")
+                        supervisor_email = os.environ.get("SUPERVISOR_EMAIL", "advisor@cgu.edu")
+                        
+                        if smtp_server and smtp_user and smtp_pass:
+                            msg = MIMEText(f"An escalation has been triggered by the CISAT Advising Assistant.\n\nStudent ID: {student_id}\n\nSummary:\n{issue_summary}")
+                            msg['Subject'] = f"Advising Escalation: Student {student_id}"
+                            msg['From'] = smtp_from
+                            msg['To'] = supervisor_email
+                            
+                            server = smtplib.SMTP(smtp_server, smtp_port)
+                            server.starttls()
+                            server.login(smtp_user, smtp_pass)
+                            server.send_message(msg)
+                            server.quit()
+                            logger.info("Successfully sent supervisor email via SMTP.")
+                            output = {"status": "success", "message": f"Supervisor has been notified via email about: {issue_summary}"}
+                        else:
+                            logger.warning("SMTP configuration missing. Simulating email send for now.")
+                            output = {"status": "success", "message": f"(Simulated) Supervisor has been notified about: {issue_summary}"}
+                    except Exception as email_exc:
+                        logger.error(f"Failed to send email: {email_exc}")
+                        output = {"status": "error", "message": "Failed to send the email due to an internal transport error."}
+                        
                     tool_outputs.append(
                         {"tool_call_id": tool.id, "output": json.dumps(output)}
                     )
