@@ -26,3 +26,4 @@ backend/chroma_db/
 backend/evaluation_logs/*.jsonl
 __pycache__/
 *.pyc
+node_modules_bak

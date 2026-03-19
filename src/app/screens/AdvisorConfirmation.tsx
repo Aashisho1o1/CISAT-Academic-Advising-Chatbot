@@ -15,7 +15,7 @@ export default function AdvisorConfirmation() {
           Advisor Review Preview
         </h2>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          This screen shows a demo version of a future advisor handoff.
+          This screen shows a preview of a future advisor handoff.
         </p>
       </div>
 
@@ -88,7 +88,7 @@ export default function AdvisorConfirmation() {
               Sample Handoff Prepared
             </p>
             <p className="text-xs" style={{ color: 'var(--gray-500)' }}>
-              Demo status
+              In progress
             </p>
           </div>
         </div>
@@ -112,7 +112,7 @@ export default function AdvisorConfirmation() {
           className="w-full mt-6 px-6 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
           style={{ backgroundColor: 'var(--cgu-red)' }}
         >
-          Simulate Advisor Approval (Demo)
+          Simulate Advisor Approval
         </button>
       )}
     </div>
@@ -125,7 +125,7 @@ export default function AdvisorConfirmation() {
           <Mail className="w-5 h-5" style={{ color: 'var(--cgu-red)' }} />
           <strong>Future advisor handoff preview</strong>
         </div>
-        <p>This demo shows the kind of summary a future advisor workflow could send:</p>
+        <p>This flow shows the kind of summary a future advisor workflow could send:</p>
         <ul className="mt-3 space-y-1">
           <li>- Your complete course history</li>
           <li>- Gap analysis results</li>
@@ -148,10 +148,10 @@ export default function AdvisorConfirmation() {
 
       <AIBubble>
         <p>
-          This is only a demo state today. No real advisor email or approval workflow is connected yet.
+          This state illustrates the end-to-end integration vision. Real advisor email routing will go here.
         </p>
         <p className="mt-3 text-sm" style={{ color: 'var(--gray-600)' }}>
-          <em>(For this demo, click "Simulate Advisor Approval" to continue)</em>
+          <em>(Click "Simulate Advisor Approval" to continue)</em>
         </p>
       </AIBubble>
     </div>

@@ -32,11 +32,11 @@ export default function Processing() {
           </div>
 
           <h2 className="mb-3" style={{ color: 'var(--gray-900)' }}>
-            Previewing the Analysis Step...
+            Analyzing Your Progress...
           </h2>
 
           <p style={{ color: 'var(--gray-600)' }}>
-            This screen simulates the next step in the demo workflow while the live chat assistant stays available.
+            This screen simulates the next step in the workflow while the live chat assistant stays available.
           </p>
 
           <div className="mt-8 space-y-3">

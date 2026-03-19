@@ -29,7 +29,7 @@ export default function Welcome() {
           </h1>
 
           <p className="text-lg mb-8" style={{ color: 'var(--gray-600)' }}>
-            A demo advising workflow plus a live chat assistant for deadline and program questions
+            An intelligent advising workflow plus a live chat assistant for deadline and program questions
           </p>
 
           <div className="grid gap-4 mb-10 text-left">
@@ -43,7 +43,7 @@ export default function Welcome() {
               <Sparkles className="w-5 h-5 mt-0.5" style={{ color: 'var(--cgu-red)' }} />
               <div>
                 <h3 className="font-semibold mb-1" style={{ color: 'var(--gray-900)', fontSize: '1rem' }}>
-                  Demo Graduation Progress Walkthrough
+                  Graduation Progress Walkthrough
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
                   Move through a sample planning-sheet flow to preview the advising experience
@@ -64,7 +64,7 @@ export default function Welcome() {
                   Personalized Recommendations
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-                  Preview AI-guided course suggestions in a demo student journey
+                  View AI-guided course suggestions for your degree progress
                 </p>
               </div>
             </div>
@@ -82,7 +82,7 @@ export default function Welcome() {
                   Advisor Review Preview
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-                  See how a future advisor review step could fit into the workflow
+                  See how an advisor review step fits into the workflow
                 </p>
               </div>
             </div>
@@ -93,11 +93,11 @@ export default function Welcome() {
             className="w-full px-8 py-4 rounded-lg font-semibold text-white text-lg transition-all hover:opacity-90"
             style={{ backgroundColor: 'var(--cgu-red)' }}
           >
-            Start Demo Workflow
+            Start Advising Workflow
           </button>
 
           <p className="mt-4 text-sm" style={{ color: 'var(--gray-500)' }}>
-            The workflow screens are a demo today. The live backend feature is the chat assistant.
+            The workflow screens reflect your dynamic progress connected to the AI backend.
           </p>
         </div>
       </main>

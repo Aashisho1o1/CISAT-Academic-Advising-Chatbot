@@ -67,7 +67,7 @@ export function TopNav({ showNavigation = true }: TopNavProps) {
           onClick={() => setShowProfilePanel(prev => !prev)}
           className="w-10 h-10 rounded-full flex items-center justify-center"
           style={{ backgroundColor: 'var(--gray-900)' }}
-          aria-label="Open demo student profile"
+          aria-label="Open student profile"
         >
           <span className="text-white font-semibold text-sm">JS</span>
         </button>
@@ -80,7 +80,7 @@ export function TopNav({ showNavigation = true }: TopNavProps) {
             }}
           >
             <p className="text-sm font-semibold mb-1" style={{ color: 'var(--gray-900)' }}>
-              Demo student profile
+              Student profile
             </p>
             <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
               This MVP does not have real account, settings, or profile features yet.

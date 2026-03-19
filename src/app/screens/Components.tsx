@@ -61,7 +61,7 @@ export default function Components() {
               title="Artificial Intelligence for Business"
               units={4}
               status="recommended"
-              description="Sample next-term elective for the demo workflow."
+              description="Sample next-term elective for the advising workflow."
             />
           </div>
         </section>

@@ -157,7 +157,7 @@ export default function GapAnalysis() {
                 {JSON.stringify(extractedData, null, 2)}
               </pre>
             ) : (
-              <li>- <strong>1 more elective</strong> (4 units) — <em>(Demo Mode)</em></li>
+              <li>- <strong>1 more elective</strong> (4 units) — <em>(Fallback Mode)</em></li>
             )}
           </ul>
         </div>

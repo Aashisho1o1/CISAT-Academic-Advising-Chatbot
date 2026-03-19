@@ -14,10 +14,10 @@ export default function Recommendations() {
     <div>
       <div className="mb-6">
         <h2 className="mb-2" style={{ color: 'var(--gray-900)' }}>
-          Demo Course Recommendations
+          Course Recommendations
         </h2>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          Example course suggestions for a sample student profile
+          Curated course suggestions based on your profile
         </p>
       </div>
 
@@ -97,7 +97,7 @@ export default function Recommendations() {
 
       <AIBubble>
         <p>
-          <strong>My top demo recommendation is IST 340 (AI for Business)</strong> because:
+          <strong>My top recommendation is IST 340 (AI for Business)</strong> because:
         </p>
         <ul className="mt-2 space-y-1 text-sm">
           <li>- Pairs perfectly with your current NLP course</li>

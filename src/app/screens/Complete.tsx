@@ -14,7 +14,7 @@ export default function Complete() {
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <CheckCircle2 className="w-8 h-8" style={{ color: 'var(--success)' }} />
-          <h2 style={{ color: 'var(--gray-900)' }}>Demo Complete State</h2>
+          <h2 style={{ color: 'var(--gray-900)' }}>Final Advising State</h2>
         </div>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
           This is an example of the final approved-plan screen.
@@ -86,7 +86,7 @@ export default function Complete() {
           style={{ backgroundColor: 'var(--cgu-red)' }}
         >
           <Download className="w-4 h-4" />
-          Download Demo Report
+          Download Plan Report
         </button>
 
         <button
@@ -94,7 +94,7 @@ export default function Complete() {
           style={{ borderColor: 'var(--gray-300)', color: 'var(--gray-700)' }}
         >
           <Mail className="w-4 h-4" />
-          Email Demo Report
+          Email Plan Report
         </button>
 
         <button
@@ -115,7 +115,7 @@ export default function Complete() {
           <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--success)' }} />
           <strong>Example approved-plan view</strong>
         </div>
-        <p>Here is a sample advisor note for the demo flow:</p>
+        <p>Here is a sample advisor note for this flow:</p>
         <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--gray-50)' }}>
           <p className="text-sm" style={{ color: 'var(--gray-700)' }}>
             <em>
@@ -142,7 +142,7 @@ export default function Complete() {
 
       <AIBubble>
         <p>
-          <strong>This is a demo summary, not a saved student record.</strong>
+          <strong>This is an illustrative summary, not a saved student record.</strong>
         </p>
         <p className="mt-3 text-sm" style={{ color: 'var(--gray-600)' }}>
           The current MVP does not save plans to a portal yet. The live backend feature today is the chat assistant.

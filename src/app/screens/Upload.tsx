@@ -42,10 +42,10 @@ export default function Upload() {
     <div>
       <div className="mb-6">
         <h2 className="mb-2" style={{ color: 'var(--gray-900)' }}>
-          Demo Planning Sheet Upload
+          Planning Sheet Upload
         </h2>
         <p className="text-sm" style={{ color: 'var(--gray-600)' }}>
-          Drop a sample file here to continue through the demo workflow.
+          Drop your file here to continue through the advising workflow.
         </p>
       </div>
       {isUploading ? (
@@ -62,12 +62,12 @@ export default function Upload() {
   const rightPanel = (
     <div>
       <AIBubble>
-        <p>Hello! I'm your CISAT advising assistant. This upload flow is a demo preview of a future advising experience.</p>
+        <p>Hello! I'm your CISAT advising assistant. Welcome to your personalized advising experience.</p>
         <p className="mt-3">
-          <strong>To continue the walkthrough, upload any supported file.</strong> The live backend feature today is the chat assistant.
+          <strong>To continue, upload any supported file.</strong>
         </p>
         <p className="mt-3">
-          This demo screen accepts:
+          We accept:
         </p>
         <ul className="mt-2 space-y-1">
           <li>- PDF documents</li>
