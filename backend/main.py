@@ -236,6 +236,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 MAX_MESSAGE_LENGTH = 4000
 
+class UploadPlanResponse(BaseModel):
+    """Response model for uploading a graduation plan."""
+    thread_id: str
+    file_id: str
 
 class ChatRequest(BaseModel):
     """Request model for the main chat endpoint, using a thread ID."""
@@ -280,7 +284,7 @@ else:
 
 @app.post("/api/upload-plan", response_model=UploadPlanResponse)
 @_chat_decorator
-async def upload_plan(file: UploadFile = File(...)):
+async def upload_plan(request: Request, file: UploadFile = File(...)):
     """
     Accepts a student's graduation plan file, uploads it to OpenAI,
     and creates a new conversation thread. The file is NOT yet attached

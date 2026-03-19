@@ -12,10 +12,9 @@ from pathlib import Path
 
 from openai import OpenAI
 from openai.types.beta import Assistant
-from openai.types.beta.assistant import ToolResources, Tools
 
 # Import the synchronous client getter
-from .openai_client import get_client
+from openai_client import get_client
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ Your role is to provide accurate, helpful, and safe guidance to students based o
 """
 
 # Define the tools the assistant can use, including custom functions and file_search
-ASSISTANT_TOOLS: list[Tools] = [
+ASSISTANT_TOOLS: list[dict] = [
     {"type": "file_search"},
     {
         "type": "function",

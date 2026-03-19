@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { useAdvisingStore } from '../store';
 import { CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
 import { SplitLayout } from '../components/SplitLayout';
 import { AIBubble } from '../components/ChatBubbles';
@@ -8,6 +9,7 @@ import { ScreenNavigator } from '../components/ScreenNavigator';
 
 export default function GapAnalysis() {
   const navigate = useNavigate();
+  const { extractedData } = useAdvisingStore();
 
   const leftPanel = (
     <div>
@@ -149,8 +151,14 @@ export default function GapAnalysis() {
           <p className="font-medium mb-2" style={{ color: 'var(--gray-900)' }}>
             Missing Requirements:
           </p>
-          <ul className="space-y-1 text-sm">
-            <li>- <strong>1 more elective</strong> (4 units)</li>
+          <ul className="space-y-1 text-sm text-gray-700">
+            {extractedData ? (
+              <pre className="whitespace-pre-wrap text-xs bg-white p-2 border border-gray-200 rounded">
+                {JSON.stringify(extractedData, null, 2)}
+              </pre>
+            ) : (
+              <li>- <strong>1 more elective</strong> (4 units) — <em>(Demo Mode)</em></li>
+            )}
           </ul>
         </div>
       </AIBubble>

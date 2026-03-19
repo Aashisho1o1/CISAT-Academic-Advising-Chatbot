@@ -5,15 +5,37 @@ import { UploadZone } from '../components/UploadZone';
 import { QuickReplyChip } from '../components/QuickReplyChip';
 import { ChatbotButton } from '../components/ChatbotButton';
 import { ScreenNavigator } from '../components/ScreenNavigator';
-
+import { useState } from 'react';
+import { API_URL } from '../../config';
+import { useAdvisingStore } from '../store';
 export default function Upload() {
   const navigate = useNavigate();
+  const setSession = useAdvisingStore((state) => state.setSession);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // _file is prefixed with _ to satisfy noUnusedParameters while the Zustand
-  // store doesn't exist yet. Once global state is wired up, replace this with:
-  //   useAdvisingStore.getState().setUploadedFile(file);
-  const handleUpload = (_file: File) => {
-    navigate('/processing');
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${API_URL}/api/upload-plan`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload plan');
+      }
+
+      const data = await response.json();
+      setSession(data.thread_id, data.file_id);
+      navigate('/processing');
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload the file. Please ensure the backend is running.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const leftPanel = (
@@ -26,7 +48,15 @@ export default function Upload() {
           Drop a sample file here to continue through the demo workflow.
         </p>
       </div>
-      <UploadZone onUpload={handleUpload} />
+      </div>
+      {isUploading ? (
+        <div className="p-8 text-center" style={{ backgroundColor: 'var(--gray-50)', borderRadius: '1rem', border: '1px solid var(--gray-200)' }}>
+          <p style={{ color: 'var(--cgu-red)' }}><strong>Uploading securely...</strong></p>
+          <p className="text-sm mt-2 text-gray-500">Creating OpenAI Thread and uploading file via Assistants API.</p>
+        </div>
+      ) : (
+        <UploadZone onUpload={handleUpload} />
+      )}
     </div>
   );
 

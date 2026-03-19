@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import { AIBubble, UserBubble } from './ChatBubbles';
 import { API_URL } from '@/config';
+import { useAdvisingStore } from '../store';
+import { useNavigate } from 'react-router';
 
 const INITIAL_ASSISTANT_MESSAGE =
   'Hi! I\'m the CISAT advising chat assistant. Ask me about deadlines, requirements, or next steps in the program.';
@@ -25,6 +27,9 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const { threadId, fileId, setExtractedData } = useAdvisingStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
@@ -48,22 +53,60 @@ export function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
     setLoading(true);
 
     try {
+      if (!threadId) {
+         setMessages(prev => [...prev, { role: 'assistant', content: 'No active session found. Please upload a plan first to start a thread.' }]);
+         setLoading(false);
+         return;
+      }
+
+      // We only attach the fileId on the very first message sent by the user to attach it to the thread.
+      const isFirstUserMessage = messages.filter(m => m.role === 'user').length === 0;
+      
+      const payload = { 
+        thread_id: threadId, 
+        message: trimmed,
+        file_ids: fileId && isFirstUserMessage ? [fileId] : [],
+      };
+
       const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, history }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         if (res.status === 429) throw new Error('Too many requests');
         if (res.status === 503) throw new Error('Service unavailable');
         throw new Error(`Server error: ${res.status}`);
       }
-      const data: { reply?: unknown } = await res.json();
-      if (typeof data.reply !== 'string') {
-        throw new Error('Invalid response');
+      
+      // The new response schema can give `reply` OR `tool_call`
+      const data: { reply?: string; tool_call?: { name: string; args: any } } = await res.json();
+      
+      if (data.tool_call) {
+        // Handle Assistant's function call to frontend
+        if (data.tool_call.name === 'trigger_ui_navigation') {
+          const { target_route, extracted_data } = data.tool_call.args;
+          if (extracted_data) {
+             setExtractedData(extracted_data);
+          }
+          
+          let routePath = `/${target_route.toLowerCase()}`;
+          // Map backend enum string roughly to react-router typical pathing
+          if (target_route === 'GapAnalysis') routePath = '/gap-analysis';
+          if (target_route === 'Recommendations') routePath = '/recommendations';
+          if (target_route === 'CourseHistory') routePath = '/course-history';
+          if (target_route === 'AdvisorConfirmation') routePath = '/advisor-confirmation';
+          
+          navigate(routePath);
+          setMessages(prev => [...prev, { role: 'assistant', content: `Ok! I've navigated you to the ${target_route} screen based on your request.` }]);
+        } else {
+           setMessages(prev => [...prev, { role: 'assistant', content: `[Executed internal tool: ${data.tool_call.name}]` }]);
+        }
+      } else if (data.reply) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      } else {
+        throw new Error('Invalid response - neither reply nor tool_call was found.');
       }
-      const reply = data.reply;
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (error) {
       const reply =
         error instanceof Error && error.message === 'Too many requests'
