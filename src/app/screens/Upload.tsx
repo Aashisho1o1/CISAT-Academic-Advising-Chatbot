@@ -48,7 +48,6 @@ export default function Upload() {
           Drop a sample file here to continue through the demo workflow.
         </p>
       </div>
-      </div>
       {isUploading ? (
         <div className="p-8 text-center" style={{ backgroundColor: 'var(--gray-50)', borderRadius: '1rem', border: '1px solid var(--gray-200)' }}>
           <p style={{ color: 'var(--cgu-red)' }}><strong>Uploading securely...</strong></p>
